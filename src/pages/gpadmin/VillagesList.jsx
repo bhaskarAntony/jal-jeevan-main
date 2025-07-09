@@ -382,14 +382,14 @@ const VillagesList = () => {
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => openViewModal(village._id)}
+                 onClick={() => navigate(`/gp-admin/village/${village._id}`)}
                   className="flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-all"
                 >
                   <Eye className="w-4 h-4 mr-1" />
                   View
                 </button>
                 <button
-                  onClick={() => navigate(`/gp-admin/village/${village._id}`)}
+                  onClick={() => openEditModal(village._id)}
                   className="flex items-center px-3 py-1 text-sm font-medium text-gray-600 bg-gray-50 rounded-md hover:bg-gray-100 transition-all"
                 >
                   <Edit className="w-4 h-4 mr-1" />
