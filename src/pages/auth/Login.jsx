@@ -182,7 +182,7 @@ const Login = () => {
           </motion.button>
         </motion.form>
 
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -193,7 +193,7 @@ const Login = () => {
             <p><strong>Super Admin:</strong> admin@example.com / password123</p>
             <p><strong>GP Admin:</strong> gpadmin@example.com / password123</p>
           </div>
-        </motion.div>
+        </motion.div> */}
       </motion.div>
     </div>
   )
