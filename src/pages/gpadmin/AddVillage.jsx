@@ -28,7 +28,7 @@ const AddVillage = () => {
     setLoading(true)
 
     try {
-      // await gpAdminAPI.createVillage(formData)
+      await gpAdminAPI.createVillage(formData)
       showSuccess('Village added successfully!')
       navigate('/gp-admin/villages')
     } catch (error) {
