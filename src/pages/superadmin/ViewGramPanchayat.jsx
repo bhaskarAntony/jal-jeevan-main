@@ -106,18 +106,18 @@ const ViewGramPanchayat = () => {
       icon: Activity,
       color: 'bg-emerald-500'
     },
-    {
-      name: 'Villages',
-      value: '12', // This should come from API
-      icon: Home,
-      color: 'bg-purple-500'
-    },
-    {
-      name: 'Houses',
-      value: '1,234', // This should come from API
-      icon: Building2,
-      color: 'bg-orange-500'
-    }
+    // {
+    //   name: 'Villages',
+    //   value: '12', // This should come from API
+    //   icon: Home,
+    //   color: 'bg-purple-500'
+    // },
+    // {
+    //   name: 'Houses',
+    //   value: '1,234', // This should come from API
+    //   icon: Building2,
+    //   color: 'bg-orange-500'
+    // }
   ]
 
   return (
@@ -152,7 +152,7 @@ const ViewGramPanchayat = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {stats.map((stat, index) => {
           const Icon = stat.icon
           return (

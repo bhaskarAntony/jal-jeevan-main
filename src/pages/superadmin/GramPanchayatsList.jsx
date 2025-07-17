@@ -87,10 +87,10 @@ const GramPanchayatsList = () => {
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="btn-secondary flex items-center">
+          {/* <button className="btn-secondary flex items-center">
             <Download className="w-5 h-5 mr-2" />
             Export Data
-          </button>
+          </button> */}
           <Link
             to="/super-admin/gram-panchayats/add"
             className="btn-primary flex items-center"
@@ -118,10 +118,10 @@ const GramPanchayatsList = () => {
               className="input-field pl-12 text-base"
             />
           </div>
-          <button className="btn-secondary flex items-center lg:w-auto">
+          {/* <button className="btn-secondary flex items-center lg:w-auto">
             <Filter className="w-5 h-5 mr-2" />
             Advanced Filters
-          </button>
+          </button> */}
         </div>
       </motion.div>
 

@@ -36,11 +36,11 @@ const ConfirmDialog = ({
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             {/* Background overlay */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              // initial={{ opacity: 0 }}
+              // animate={{ opacity: 1 }}
+              // exit={{ opacity: 0 }}
               
-              className="fixed inset-0 bg-black bg-opacity-50"
+              className="fixed inset-0"
               onClick={onClose}
             />
 

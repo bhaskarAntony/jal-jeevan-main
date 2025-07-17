@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Activity,
   Plus,
-  MapPin
+  MapPin,
+  IndianRupee
 } from 'lucide-react'
 
 const Dashboard = () => {
@@ -65,7 +66,7 @@ const Dashboard = () => {
     {
       name: 'This Month Collection',
       value: `₹${dashboardData?.thisMonthCollection || 0}`,
-      icon: DollarSign,
+      icon: IndianRupee,
       color: 'bg-gradient-to-r from-green-500 to-green-600',
       href: '/gp-admin/bills'
     },

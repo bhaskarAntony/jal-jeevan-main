@@ -112,19 +112,19 @@ const ViewGPAdmin = () => {
           </div>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="btn-secondary flex items-center">
+          {/* <button className="btn-secondary flex items-center">
             <Edit className="w-5 h-5 mr-2" />
             Edit Profile
-          </button>
-          <button className="btn-secondary flex items-center">
+          </button> */}
+          {/* <button className="btn-secondary flex items-center">
             <Lock className="w-5 h-5 mr-2" />
             Reset Password
-          </button>
+          </button> */}
         </div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
         {/* Admin Profile */}
         <div className="lg:col-span-2">
           <motion.div
@@ -242,7 +242,7 @@ const ViewGPAdmin = () => {
             </div>
 
             {/* Permissions Section */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
+            {/* <div className="mt-8 pt-8 border-t border-gray-200">
               <h3 className="section-header">System Permissions</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {permissions.map((permission, index) => (
@@ -277,14 +277,14 @@ const ViewGPAdmin = () => {
                   </motion.div>
                 ))}
               </div>
-            </div>
+            </div> */}
           </motion.div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Quick Stats */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -309,10 +309,10 @@ const ViewGPAdmin = () => {
                 <span className="font-semibold text-gray-900">12</span>
               </div>
             </div>
-          </motion.div>
+          </motion.div> */}
 
           {/* Recent Activity */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
@@ -333,10 +333,10 @@ const ViewGPAdmin = () => {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </motion.div> */}
 
           {/* Actions */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
@@ -354,7 +354,7 @@ const ViewGPAdmin = () => {
                 Suspend Account
               </button>
             </div>
-          </motion.div>
+          </motion.div> */}
         </div>
       </div>
     </div>
