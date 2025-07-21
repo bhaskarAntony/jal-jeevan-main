@@ -156,16 +156,7 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link
-                to="/forgot-password"
-                className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
+         
 
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -177,10 +168,20 @@ const Login = () => {
             {loading ? (
               <LoadingSpinner size="sm" color="white" />
             ) : (
-              'Sign In'
+              'Log In'
             )}
           </motion.button>
         </motion.form>
+         <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <Link
+                to="/forgot-password"
+                className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          </div>
 
         {/* <motion.div
           initial={{ opacity: 0 }}

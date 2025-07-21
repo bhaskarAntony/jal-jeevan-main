@@ -257,7 +257,7 @@ const SuperAdminLayout = () => {
                       className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
                     >
                       <LogOut className="w-4 h-4 mr-3" />
-                      Sign Out
+                      Log Out
                     </button>
                   </motion.div>
                 )}

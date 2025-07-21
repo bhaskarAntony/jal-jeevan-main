@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'https://jal-jeevan.onrender.com/api'
+const API_BASE_URL = 'http://localhost:3001/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -54,6 +54,8 @@ export const superAdminAPI = {
   getSuperAdmins: (params) => api.get('/super-admin/super-admins', { params }),
   createSuperAdmin: (data) => api.post('/super-admin/super-admins', data),
   deleteSuperAdmin: (id) => api.delete(`/super-admin/super-admins/${id}`),
+  getSingleSuperAdmin: (id) => api.get(`/super-admin/super-admins/${id}`),
+  updateSuperAdmin: (id) => api.put(`/super-admin/super-admins/${id}`),
 }
 
 // GP Admin API calls
