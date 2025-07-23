@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { gpAdminAPI } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 const BillsList = () => {
+  const location = useLocation();
   const [bills, setBills] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, total: 1, count: 0, totalRecords: 0 });
   const [loading, setLoading] = useState(true);
@@ -270,13 +271,13 @@ const BillsList = () => {
             <Download className="w-5 h-5 mr-2" />
             Export Data
           </button>
-          <Link
-            to="/gp-admin/new/bill"
-            className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Generate Bill
-          </Link>
+              <button
+                     onClick={() => navigate(`/gp-admin/new/bill`, { state: { loc: location.pathname } })}
+                     className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
+                   >
+                     <Plus className="w-5 h-5 mr-2" />
+                     Generate New Bill
+                   </button>
         </div>
       </div>
 
