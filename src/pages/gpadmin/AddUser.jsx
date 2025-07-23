@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
@@ -21,6 +21,7 @@ const AddUser = () => {
     number: false,
     special: false
   })
+  const [isPasswordValid, setIsPasswordValid] = useState(false)
   const [loading, setLoading] = useState(false)
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
@@ -34,9 +35,15 @@ const AddUser = () => {
       number: /[0-9]/.test(password),
       special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
     }
-    setPasswordRules(rules)
-    return Object.values(rules).every(rule => rule)
+    return { rules, isValid: Object.values(rules).every(rule => rule) }
   }
+
+  // Update password rules and validity when password changes
+  useEffect(() => {
+    const { rules, isValid } = validatePassword(formData.password)
+    setPasswordRules(rules)
+    setIsPasswordValid(isValid)
+  }, [formData.password])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -44,15 +51,16 @@ const AddUser = () => {
       ...prev,
       [name]: value
     }))
-    if (name === 'password') {
-      validatePassword(value)
-    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!validatePassword(formData.password)) {
+    if (!isPasswordValid) {
       showError('Password does not meet all requirements')
+      return
+    }
+    if (!formData.name.trim() || !formData.email.trim() || !formData.mobile.trim() || !formData.role) {
+      showError('All required fields must be filled')
       return
     }
     setLoading(true)
@@ -73,7 +81,7 @@ const AddUser = () => {
       formData.name.trim() &&
       formData.email.trim() &&
       formData.mobile.trim() &&
-      validatePassword(formData.password) &&
+      isPasswordValid &&
       formData.role
     )
   }

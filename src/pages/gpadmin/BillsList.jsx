@@ -1,170 +1,255 @@
-import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
-import { gpAdminAPI } from '../../services/api'
-import { useToast } from '../../contexts/ToastContext'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import { 
-  Plus, Search, Eye, FileText, Filter, Download, Printer, DollarSign, Calendar, User, X, QrCode
-} from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import { gpAdminAPI } from '../../services/api';
+import { useToast } from '../../contexts/ToastContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import {
+  Plus, Search, Eye, FileText, Filter, Download, Printer, DollarSign, Calendar, User, X, QrCode, Pencil, Trash2
+} from 'lucide-react';
 
 const BillsList = () => {
-  const [bills, setBills] = useState([])
-  const [pagination, setPagination] = useState({ current: 1, total: 1, count: 0, totalRecords: 0 })
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [isBillModalOpen, setIsBillModalOpen] = useState(false)
-  const [selectedBill, setSelectedBill] = useState(null)
-  const [billDetails, setBillDetails] = useState(null)
+  const [bills, setBills] = useState([]);
+  const [pagination, setPagination] = useState({ current: 1, total: 1, count: 0, totalRecords: 0 });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
+  const [billDetails, setBillDetails] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    currentReading: '',
+    month: '',
+    year: '',
+    dueDate: '',
+    interest: '',
+    others: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amount: '',
     paymentMode: 'cash',
     transactionId: '',
     remarks: ''
-  })
-  const [paymentLoading, setPaymentLoading] = useState(false)
-  const [qrCode, setQrCode] = useState(null)
-  const { showSuccess, showError } = useToast()
-  const navigate = useNavigate()
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [qrCode, setQrCode] = useState(null);
+  const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   useEffect(() => {
-    fetchBills()
-  }, [searchTerm, statusFilter, pagination.current])
+    fetchBills();
+  }, [searchTerm, statusFilter, pagination.current]);
 
   const fetchBills = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const response = await gpAdminAPI.getBills({
         page: pagination.current,
         limit: 10,
         search: searchTerm,
         status: statusFilter
-      })
-      setBills(response.data.data.bills)
-      setPagination(response.data.data.pagination)
+      });
+      setBills(response.data.data.bills);
+      setPagination(response.data.data.pagination);
     } catch (error) {
-      showError('Failed to fetch bills')
-      console.error('Fetch error:', error)
+      showError('Failed to fetch bills');
+      console.error('Fetch error:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handlePageChange = (page) => {
-    setPagination(prev => ({ ...prev, current: page }))
-  }
+    setPagination(prev => ({ ...prev, current: page }));
+  };
 
   const handleStatusFilter = (status) => {
-    setStatusFilter(status)
-    setPagination(prev => ({ ...prev, current: 1 }))
-  }
+    setStatusFilter(status);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
 
   const handleViewBill = async (billId) => {
     try {
-      const response = await gpAdminAPI.getBill(billId)
-      setBillDetails(response.data.data)
-      setSelectedBill(billId)
-      setIsBillModalOpen(true)
+      const response = await gpAdminAPI.getBill(billId);
+      setBillDetails(response.data.data);
+      setSelectedBill(billId);
+      setIsBillModalOpen(true);
     } catch (error) {
-      showError('Failed to fetch bill details')
-      console.error('Fetch bill error:', error)
+      showError('Failed to fetch bill details');
+      console.error('Fetch bill error:', error);
     }
-  }
+  };
+
+  const handleEditBill = async (billId) => {
+    try {
+      const response = await gpAdminAPI.getBill(billId);
+      const bill = response.data.data.bill;
+      setEditFormData({
+        currentReading: bill.currentReading.toString(),
+        month: bill.month,
+        year: bill.year.toString(),
+        dueDate: new Date(bill.dueDate).toISOString().split('T')[0],
+        interest: bill.interest.toString(),
+        others: bill.others.toString()
+      });
+      setSelectedBill(billId);
+      setIsEditModalOpen(true);
+    } catch (error) {
+      showError('Failed to fetch bill details for editing');
+      console.error('Fetch bill error:', error);
+    }
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    try {
+      const payload = {
+        currentReading: parseFloat(editFormData.currentReading),
+        month: editFormData.month,
+        year: parseInt(editFormData.year),
+        dueDate: editFormData.dueDate,
+        interest: parseFloat(editFormData.interest) || 0,
+        others: parseFloat(editFormData.others) || 0
+      };
+      await gpAdminAPI.updateBill(selectedBill, payload);
+      showSuccess('Bill updated successfully');
+      setIsEditModalOpen(false);
+      setEditFormData({
+        currentReading: '',
+        month: '',
+        year: '',
+        dueDate: '',
+        interest: '',
+        others: ''
+      });
+      fetchBills();
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to update bill');
+      console.error('Edit bill error:', error);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteBill = async (billId) => {
+    if (window.confirm('Are you sure you want to delete this bill? This action cannot be undone.')) {
+      try {
+        await gpAdminAPI.deleteBill(billId);
+        showSuccess('Bill deleted successfully');
+        fetchBills();
+      } catch (error) {
+        showError(error.response?.data?.message || 'Failed to delete bill');
+        console.error('Delete bill error:', error);
+      }
+    }
+  };
 
   const handleDownloadPDF = async (billId) => {
     try {
-      const response = await gpAdminAPI.downloadBillPDF(billId)
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `bill_${bills.find(b => b._id === billId).billNumber}.pdf`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      showSuccess('Bill PDF downloaded successfully')
+      const response = await gpAdminAPI.downloadBillPDF(billId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `bill_${bills.find(b => b._id === billId).billNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showSuccess('Bill PDF downloaded successfully');
     } catch (error) {
-      showError('Failed to download bill PDF')
-      console.error('Download PDF error:', error)
+      showError('Failed to download bill PDF');
+      console.error('Download PDF error:', error);
     }
-  }
+  };
 
   const handleExportBills = async () => {
     try {
-      const response = await gpAdminAPI.exportBills()
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'bills_export.csv')
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      showSuccess('Bills exported successfully')
+      const response = await gpAdminAPI.exportBills();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'bills_export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showSuccess('Bills exported successfully');
     } catch (error) {
-      showError('Failed to export bills')
-      console.error('Export bills error:', error)
+      showError('Failed to export bills');
+      console.error('Export bills error:', error);
     }
-  }
+  };
 
   const handleGenerateQRCode = async (billId) => {
     try {
-      const response = await gpAdminAPI.generateQRCode(billId)
-      setQrCode(response.data.data.qrCode)
+      const response = await gpAdminAPI.generateQRCode(billId);
+      setQrCode(response.data.data.qrCode);
     } catch (error) {
-      showError('Failed to generate QR code')
-      console.error('Generate QR code error:', error)
+      showError('Failed to generate QR code');
+      console.error('Generate QR code error:', error);
     }
-  }
+  };
 
   const handlePaymentChange = (e) => {
-    const { name, value } = e.target
-    setPaymentData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setPaymentData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handlePaymentSubmit = async (e) => {
-    e.preventDefault()
-    setPaymentLoading(true)
+    e.preventDefault();
+    setPaymentLoading(true);
     try {
       const paymentPayload = {
         amount: parseFloat(paymentData.amount),
         paymentMode: paymentData.paymentMode,
         transactionId: paymentData.paymentMode === 'cash' ? null : paymentData.transactionId,
         remarks: paymentData.remarks || undefined
-      }
-      await gpAdminAPI.makePayment(selectedBill, paymentPayload)
-      showSuccess('Payment recorded successfully')
-      setPaymentData({ amount: '', paymentMode: 'cash', transactionId: '', remarks: '' })
-      setIsBillModalOpen(false)
-      fetchBills()
+      };
+      await gpAdminAPI.makePayment(selectedBill, paymentPayload);
+      showSuccess('Payment recorded successfully');
+      setPaymentData({ amount: '', paymentMode: 'cash', transactionId: '', remarks: '' });
+      setIsBillModalOpen(false);
+      fetchBills();
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to record payment')
-      console.error('Payment error:', error)
+      showError(error.response?.data?.message || 'Failed to record payment');
+      console.error('Payment error:', error);
     } finally {
-      setPaymentLoading(false)
+      setPaymentLoading(false);
     }
-  }
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'paid':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 text-green-800';
       case 'partial':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-100 text-yellow-800';
       case 'pending':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 text-gray-800';
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" />
       </div>
-    )
+    );
   }
 
   return (
@@ -317,13 +402,29 @@ const BillsList = () => {
                           <Printer className="w-5 h-5" />
                         </button>
                         {bill.status !== 'paid' && (
-                          <button
-                            onClick={() => { setSelectedBill(bill._id); setIsBillModalOpen(true); }}
-                            className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-all"
-                            title="Pay Bill"
-                          >
-                            <DollarSign className="w-5 h-5" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleEditBill(bill._id)}
+                              className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-all"
+                              title="Edit Bill"
+                            >
+                              <Pencil className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBill(bill._id)}
+                              className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-all"
+                              title="Delete Bill"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => { setSelectedBill(bill._id); setIsBillModalOpen(true); }}
+                              className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-all"
+                              title="Pay Bill"
+                            >
+                              <DollarSign className="w-5 h-5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -413,6 +514,22 @@ const BillsList = () => {
                 >
                   <Printer className="w-4 h-4" />
                 </button>
+                {bill.status !== 'paid' && (
+                  <>
+                    <button
+                      onClick={() => handleEditBill(bill._id)}
+                      className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-all"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBill(bill._id)}
+                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
               {bill.status !== 'paid' && (
                 <button
@@ -716,8 +833,154 @@ const BillsList = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  )
-}
 
-export default BillsList
+      {/* Edit Bill Modal */}
+      <AnimatePresence>
+        {isEditModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 overflow-y-auto py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 my-auto sm:p-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Edit Bill
+                </h2>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+                  aria-label="Close modal"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <form onSubmit={handleEditSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Current Reading (KL) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="currentReading"
+                    value={editFormData.currentReading}
+                    onChange={handleEditFormChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter current reading"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Month <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="month"
+                    value={editFormData.month}
+                    onChange={handleEditFormChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    required
+                  >
+                    <option value="">Select Month</option>
+                    {months.map(month => (
+                      <option key={month} value={month}>{month}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Year <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="year"
+                    value={editFormData.year}
+                    onChange={handleEditFormChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter year"
+                    min="2000"
+                    max="2099"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Due Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={editFormData.dueDate}
+                    onChange={handleEditFormChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Interest
+                  </label>
+                  <input
+                    type="number"
+                    name="interest"
+                    value={editFormData.interest}
+                    onChange={handleEditFormChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter interest amount"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Others
+                  </label>
+                  <input
+                    type="number"
+                    name="others"
+                    value={editFormData.others}
+                    onChange={handleEditFormChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter other charges"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {editLoading ? (
+                      <LoadingSpinner size="sm" color="white" />
+                    ) : (
+                      'Update Bill'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default BillsList;
