@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { Plus, Search, Home, Calendar, X } from 'lucide-react'
 
 const GenerateBill = () => {
+  const location = useLocation();
+  console.log(location);
+  
   const [houses, setHouses] = useState([])
   const [filteredHouses, setFilteredHouses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -128,7 +131,7 @@ const GenerateBill = () => {
           </p>
         </div>
         <Link
-          to="/gp-admin/bills"
+          to={location.state.loc?location.state.loc:'/gp-admin/bills'}
           className="flex items-center px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
         >
           <X className="w-5 h-5 mr-2" />
@@ -252,7 +255,6 @@ const GenerateBill = () => {
                 min="0"
                 step="0.01"
                 required
-                disabled
               />
             </div>
             <div>
@@ -306,7 +308,7 @@ const GenerateBill = () => {
           {/* Submit Button */}
           <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
             <Link
-              to="/gp-admin/bills"
+             to={location.state.loc?location.state.loc:'/gp-admin/bills'}
               className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
             >
               Cancel

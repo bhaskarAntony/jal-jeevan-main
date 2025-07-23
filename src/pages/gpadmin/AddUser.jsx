@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
-import { ArrowLeft, User, Mail, Phone, Shield, Lock } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, Shield, Lock, Check, X } from 'lucide-react'
 
 const AddUser = () => {
   const [formData, setFormData] = useState({
@@ -14,21 +14,48 @@ const AddUser = () => {
     password: '',
     role: 'mobile_user'
   })
+  const [passwordRules, setPasswordRules] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false
+  })
   const [loading, setLoading] = useState(false)
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
 
+  // Password validation rules
+  const validatePassword = (password) => {
+    const rules = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    }
+    setPasswordRules(rules)
+    return Object.values(rules).every(rule => rule)
+  }
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    if (name === 'password') {
+      validatePassword(value)
+    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!validatePassword(formData.password)) {
+      showError('Password does not meet all requirements')
+      return
+    }
     setLoading(true)
-
     try {
       await gpAdminAPI.createUser(formData)
       showSuccess('User added successfully!')
@@ -40,8 +67,19 @@ const AddUser = () => {
     }
   }
 
+  // Check if form is valid for enabling submit button
+  const isFormValid = () => {
+    return (
+      formData.name.trim() &&
+      formData.email.trim() &&
+      formData.mobile.trim() &&
+      validatePassword(formData.password) &&
+      formData.role
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto py-6">
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
@@ -52,19 +90,19 @@ const AddUser = () => {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Add New User</h1>
-          <p className="text-gray-600 mt-1">Create a new user account for your Gram Panchayat</p>
+          <p className="text-gray-600 mt-1 text-sm">Create a new user account for your Gram Panchayat</p>
         </div>
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center mb-6">
           <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
             <User className="w-5 h-5 text-emerald-600" />
           </div>
           <div className="ml-4">
             <h2 className="text-lg font-semibold text-gray-900">User Details</h2>
-            <p className="text-gray-600">Fill in the information below</p>
+            <p className="text-gray-600 text-sm">Fill in the information below</p>
           </div>
         </div>
 
@@ -74,61 +112,73 @@ const AddUser = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name *
               </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="Enter full name"
-              />
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  placeholder="Enter full name"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Mobile Number *
               </label>
-              <input
-                type="tel"
-                name="mobile"
-                required
-                value={formData.mobile}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="+91 9876543210"
-              />
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="tel"
+                  name="mobile"
+                  required
+                  value={formData.mobile}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  placeholder="+91 9876543210"
+                />
+              </div>
             </div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address *
               </label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="user@example.com"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  placeholder="user@example.com"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 User Role *
               </label>
-              <select
-                name="role"
-                required
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              >
-                <option value="mobile_user">Mobile User</option>
-                <option value="gp_admin">GP Admin</option>
-              </select>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <select
+                  name="role"
+                  required
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                >
+                  <option value="mobile_user">Mobile User</option>
+                  <option value="gp_admin">GP Admin</option>
+                </select>
+              </div>
               <p className="text-sm text-gray-500 mt-1">
                 Mobile users can manage bills and payments. GP Admins have full access.
               </p>
@@ -138,19 +188,61 @@ const AddUser = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password *
               </label>
-              <input
-                type="password"
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="Enter password"
-                minLength="6"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Password must be at least 6 characters long
-              </p>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  placeholder="Enter password"
+                />
+              </div>
+              <div className="mt-2 space-y-1">
+                <p className="text-sm font-medium text-gray-700">Password must include:</p>
+                <div className="flex items-center space-x-2">
+                  {passwordRules.length ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="text-sm text-gray-600">At least 8 characters</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {passwordRules.uppercase ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="text-sm text-gray-600">One uppercase letter</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {passwordRules.lowercase ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="text-sm text-gray-600">One lowercase letter</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {passwordRules.number ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="text-sm text-gray-600">One number</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {passwordRules.special ? (
+                    <Check className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="text-sm text-gray-600">One special character (!@#$%^&*(),.?":{}|)</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -165,7 +257,7 @@ const AddUser = () => {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isFormValid()}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

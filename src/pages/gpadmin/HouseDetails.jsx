@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -25,6 +25,8 @@ import {
 
 const HouseDetails = () => {
   const { id } = useParams()
+  const location = useLocation();
+  console.log(location);
   const [house, setHouse] = useState(null)
   const [bills, setBills] = useState([])
   const [qrCodeData, setQrCodeData] = useState({ upiId: '', merchantName: '' })
@@ -209,8 +211,8 @@ const HouseDetails = () => {
           </div>
         </div>
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate(`/gp-admin/new/bill`)}
+           <button
+            onClick={() => navigate(`/gp-admin/new/bill`, {state:{loc: location.pathname}})}
             className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -353,8 +355,8 @@ const HouseDetails = () => {
             <h2 className="text-lg font-semibold text-gray-900">Payment History</h2>
             <p className="text-gray-600 mt-1 text-sm">All water bills for this house</p>
           </div>
-          <button
-            onClick={() => navigate(`/gp-admin/houses/${id}/generate-bill`)}
+         <button
+            onClick={() => navigate(`/gp-admin/new/bill`, {state:{loc: location.pathname}})}
             className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
           >
             <Plus className="w-5 h-5 mr-2" />

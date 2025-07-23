@@ -65,7 +65,7 @@ const GPAdminLayout = () => {
       icon: QrCode
     },
     { 
-      name: 'Settings', 
+      name: 'GP Profile', 
       href: '/gp-admin/settings', 
       icon: Settings
     },
@@ -221,7 +221,7 @@ const GPAdminLayout = () => {
                       onClick={() => setProfileDropdownOpen(false)}
                     >
                       <Settings className="w-4 h-4 mr-3" />
-                      GP Settings
+                      GP Profile
                     </Link>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
@@ -229,7 +229,7 @@ const GPAdminLayout = () => {
                       className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
                     >
                       <LogOut className="w-4 h-4 mr-3" />
-                      Sign Out
+                      Log Out
                     </button>
                   </motion.div>
                 )}

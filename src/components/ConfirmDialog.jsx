@@ -37,7 +37,7 @@ const ConfirmDialog = ({
             {/* Background overlay */}
             <motion.div
               // initial={{ opacity: 0 }}
-              // animate={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
               // exit={{ opacity: 0 }}
               
               className="fixed inset-0"
@@ -47,10 +47,7 @@ const ConfirmDialog = ({
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
             {/* Dialog */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity:  1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            <div
               className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-xl border border-gray-200"
             >
               {/* Header */}
@@ -99,7 +96,7 @@ const ConfirmDialog = ({
                   {confirmText}
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
       )}

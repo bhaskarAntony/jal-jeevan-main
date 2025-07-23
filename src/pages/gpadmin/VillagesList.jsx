@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
@@ -31,24 +31,34 @@ const VillagesList = () => {
   const [editModal, setEditModal] = useState({ open: false, village: null })
   const [editForm, setEditForm] = useState({ name: '', uniqueId: '', population: '', isActive: true })
   const [submitting, setSubmitting] = useState(false)
+  const searchInputRef = useRef(null)
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
 
+  // Debounce search to prevent excessive API calls
   useEffect(() => {
-    fetchVillages()
+    const handler = setTimeout(() => {
+      fetchVillages()
+    }, 500)
+
+    return () => clearTimeout(handler)
   }, [searchTerm])
 
   const fetchVillages = async () => {
     setLoading(true)
     try {
       const response = await gpAdminAPI.getVillages({ search: searchTerm })
-      setVillages(response.data.data.villages)
+      setVillages(response.data.data.villages || [])
     } catch (error) {
       showError('Failed to fetch villages')
       console.error('Fetch error:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value)
   }
 
   const handleDelete = async (id) => {
@@ -92,10 +102,8 @@ const VillagesList = () => {
 
   const openViewModal = async (id) => {
     try {
-      const response = await gpAdminAPI.getVillage(id);
-      console.log(response);
-      
-      setViewModal({ open: true, village: response.data.data })
+      const response = await gpAdminAPI.getVillage(id)
+      setViewModal({ open: true, village: response.data.data.village })
     } catch (error) {
       showError('Failed to fetch village details')
       console.error('Fetch village error:', error)
@@ -108,13 +116,15 @@ const VillagesList = () => {
 
   const openEditModal = async (id) => {
     try {
-      const response = await gpAdminAPI.getVillage(id)
-      const village = response.data.data
+      const response = await gpAdminAPI.getVillage(id);
+      console.log(response);
+      
+      const village = response.data.data.village
       setEditForm({
-        name: village.name,
-        uniqueId: village.uniqueId,
-        population: village.population,
-        isActive: village.isActive
+        name: village.name || '',
+        uniqueId: village.uniqueId || '',
+        population: village.population ? village.population.toString() : '',
+        isActive: village.isActive ?? true
       })
       setEditModal({ open: true, village })
     } catch (error) {
@@ -139,7 +149,7 @@ const VillagesList = () => {
         showError('All fields are required')
         return
       }
-      if (isNaN(editForm.population) || editForm.population <= 0) {
+      if (isNaN(editForm.population) || parseInt(editForm.population) <= 0) {
         showError('Population must be a positive number')
         return
       }
@@ -201,15 +211,20 @@ const VillagesList = () => {
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
         <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
+          <div className="flex-1 relative items-center  gap-3 flex">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Search villages by name or unique ID..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
+              ref={searchInputRef}
+              autoFocus
               className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
             />
+            {/* <button onClick={ fetchVillages} className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
+          >Search</button> */}
+
           </div>
           {/* <button
             className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all lg:w-auto"
@@ -288,7 +303,7 @@ const VillagesList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => navigate(`/gp-admin/village/${village._id}`)}
+                          onClick={() => openViewModal(village._id)}
                           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-all"
                           title="View Details"
                         >
@@ -301,6 +316,7 @@ const VillagesList = () => {
                         >
                           <Edit className="w-5 h-5" />
                         </button>
+                       
                         <button
                           onClick={() => openDeleteDialog(village._id, village.name)}
                           className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-all"
@@ -382,7 +398,7 @@ const VillagesList = () => {
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">
               <div className="flex items-center space-x-2">
                 <button
-                 onClick={() => navigate(`/gp-admin/village/${village._id}`)}
+                  onClick={() => openViewModal(village._id)}
                   className="flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-all"
                 >
                   <Eye className="w-4 h-4 mr-1" />
@@ -394,6 +410,13 @@ const VillagesList = () => {
                 >
                   <Edit className="w-4 h-4 mr-1" />
                   Edit
+                </button>
+                <button
+                  onClick={() => navigate(`/gp-admin/new/bill`, { state: { village } })}
+                  className="flex items-center px-3 py-1 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-all"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Bill
                 </button>
               </div>
               <button

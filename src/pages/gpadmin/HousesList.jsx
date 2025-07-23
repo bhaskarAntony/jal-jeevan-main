@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
@@ -15,8 +15,10 @@ import {
   Phone,
   Download,
   Upload,
-  History,
-  Edit
+  Edit,
+  X,
+  Save,
+  File
 } from 'lucide-react'
 
 const HousesList = () => {
@@ -24,6 +26,24 @@ const HousesList = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' })
+  const [editModal, setEditModal] = useState({ open: false, house: null })
+  const [editForm, setEditForm] = useState({
+    ownerName: '',
+    mobileNumber: '',
+    address: '',
+    waterMeterNumber: '',
+    usageType: 'domestic',
+    propertyNumber: '',
+    aadhaarNumber: '',
+    previousMeterReading: 0,
+    isActive: true
+  })
+  const [editLoading, setEditLoading] = useState(false)
+  const [uploadModal, setUploadModal] = useState(false)
+  const [uploadFile, setUploadFile] = useState(null)
+  const [villageId, setVillageId] = useState('')
+  const [uploadLoading, setUploadLoading] = useState(false)
+  const fileInputRef = useRef(null)
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
 
@@ -43,6 +63,74 @@ const HousesList = () => {
     }
   }
 
+  const openEditModal = async (id) => {
+    try {
+      const response = await gpAdminAPI.getHouse(id)
+      const house = response.data.data.house
+      setEditForm({
+        ownerName: house.ownerName || '',
+        mobileNumber: house.mobileNumber || '',
+        address: house.address || '',
+        waterMeterNumber: house.waterMeterNumber || '',
+        usageType: house.usageType || 'domestic',
+        propertyNumber: house.propertyNumber || '',
+        aadhaarNumber: house.aadhaarNumber || '',
+        previousMeterReading: house.previousMeterReading || 0,
+        isActive: house.isActive ?? true
+      })
+      setEditModal({ open: true, house })
+    } catch (error) {
+      showError('Failed to fetch house details')
+      console.error('Fetch error:', error)
+    }
+  }
+
+  const closeEditModal = () => {
+    setEditModal({ open: false, house: null })
+    setEditForm({
+      ownerName: '',
+      mobileNumber: '',
+      address: '',
+      waterMeterNumber: '',
+      usageType: 'domestic',
+      propertyNumber: '',
+      aadhaarNumber: '',
+      previousMeterReading: 0,
+      isActive: true
+    })
+  }
+
+  const handleEditChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setEditForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setEditLoading(true)
+    try {
+      const requiredFields = ['ownerName', 'mobileNumber', 'address', 'waterMeterNumber', 'usageType', 'propertyNumber']
+      for (const field of requiredFields) {
+        if (!editForm[field]) {
+          showError(`${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`)
+          return
+        }
+      }
+      await gpAdminAPI.updateHouse(editModal.house._id, editForm)
+      showSuccess('House updated successfully')
+      setEditModal({ open: false, house: null })
+      fetchHouses()
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to update house')
+      console.error('Update error:', error)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   const handleDelete = async (id) => {
     try {
       await gpAdminAPI.deleteHouse(id)
@@ -51,7 +139,17 @@ const HousesList = () => {
     } catch (error) {
       showError('Failed to delete house')
       console.error('Delete error:', error)
+    } finally {
+      closeDeleteDialog()
     }
+  }
+
+  const openDeleteDialog = (id, name) => {
+    setDeleteDialog({ open: true, id, name })
+  }
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ open: false, id: null, name: '' })
   }
 
   const handleExport = async () => {
@@ -70,12 +168,48 @@ const HousesList = () => {
     }
   }
 
-  const openDeleteDialog = (id, name) => {
-    setDeleteDialog({ open: true, id, name })
+  const openUploadModal = () => {
+    setUploadModal(true)
   }
 
-  const closeDeleteDialog = () => {
-    setDeleteDialog({ open: false, id: null, name: '' })
+  const closeUploadModal = () => {
+    setUploadModal(false)
+    setUploadFile(null)
+    setVillageId('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleFileChange = (e) => {
+    setUploadFile(e.target.files[0])
+  }
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault()
+    if (!villageId) {
+      showError('Please select a village')
+      return
+    }
+    if (!uploadFile) {
+      showError('Please select an Excel file')
+      return
+    }
+    setUploadLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('villageId', villageId)
+      formData.append('file', uploadFile)
+      const response = await gpAdminAPI.uploadHouses(formData)
+      showSuccess(response.data.message)
+      fetchHouses()
+      closeUploadModal()
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to upload houses')
+      console.error('Upload error:', error)
+    } finally {
+      setUploadLoading(false)
+    }
   }
 
   if (loading) {
@@ -87,23 +221,23 @@ const HousesList = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto py-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Houses Management</h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">
             Manage all houses and their water connections
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Link
-            to="/gp-admin/houses/bulk-import"
+          <button
+            onClick={openUploadModal}
             className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Upload className="w-4 h-4 mr-2" />
             Bulk Import
-          </Link>
+          </button>
           <button
             onClick={handleExport}
             className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -130,7 +264,7 @@ const HousesList = () => {
             placeholder="Search houses by owner name, meter number, mobile, or village..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
           />
         </div>
       </div>
@@ -233,20 +367,13 @@ const HousesList = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {/* <button
-                            onClick={() => navigate(`/gp-admin/houses/${house._id}/payment-history`)}
-                            className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Payment History"
-                          >
-                            <History className="w-4 h-4" />
-                          </button> */}
-                          {/* <button
-                            onClick={() => navigate(`/gp-admin/houses/${house._id}/edit`)}
+                          <button
+                            onClick={() => openEditModal(house._id)}
                             className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
-                          </button> */}
+                          </button>
                           <button
                             onClick={() => openDeleteDialog(house._id, house.ownerName)}
                             className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
@@ -265,7 +392,7 @@ const HousesList = () => {
             <div className="text-center py-12">
               <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No houses found</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-4 text-sm">
                 {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first house'}
               </p>
               {!searchTerm && (
@@ -341,12 +468,13 @@ const HousesList = () => {
                   <Eye className="w-3 h-3 mr-1" />
                   View
                 </button>
-                {/* <button
-                  onClick={() => navigate(`/gp-admin/houses/${house._id}/payment-history`)}
-                  className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-md transition-colors"
+                <button
+                  onClick={() => openEditModal(house._id)}
+                  className="flex items-center px-3 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
                 >
-                  <History className="w-3 h-3" />
-                </button> */}
+                  <Edit className="w-3 h-3 mr-1" />
+                  Edit
+                </button>
               </div>
               <button
                 onClick={() => openDeleteDialog(house._id, house.ownerName)}
@@ -362,7 +490,7 @@ const HousesList = () => {
           <div className="text-center py-12">
             <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No houses found</h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-4 text-sm">
               {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first house'}
             </p>
             {!searchTerm && (
@@ -377,6 +505,282 @@ const HousesList = () => {
           </div>
         )}
       </div>
+
+      {/* Edit House Modal */}
+      <AnimatePresence>
+        {editModal.open && editModal.house && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 overflow-y-auto py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 my-auto sm:p-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Edit House
+                </h2>
+                <button
+                  onClick={closeEditModal}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Close modal"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Owner Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="ownerName"
+                    value={editForm.ownerName}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter owner name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="mobileNumber"
+                    value={editForm.mobileNumber}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter mobile number"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={editForm.address}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter address"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Water Meter Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="waterMeterNumber"
+                    value={editForm.waterMeterNumber}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter water meter number"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Usage Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="usageType"
+                    value={editForm.usageType}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    required
+                  >
+                    <option value="domestic">Domestic</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="industrial">Industrial</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Property Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="propertyNumber"
+                    value={editForm.propertyNumber}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter property number"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Aadhaar Number
+                  </label>
+                  <input
+                    type="text"
+                    name="aadhaarNumber"
+                    value={editForm.aadhaarNumber}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter Aadhaar number (optional)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Previous Meter Reading
+                  </label>
+                  <input
+                    type="number"
+                    name="previousMeterReading"
+                    value={editForm.previousMeterReading}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter previous meter reading"
+                    min="0"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    checked={editForm.isActive}
+                    onChange={handleEditChange}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                  />
+                  <label className="ml-2 text-sm font-semibold text-gray-700">
+                    Active
+                  </label>
+                </div>
+                <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {editLoading ? (
+                      <LoadingSpinner size="sm" color="white" />
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Import Modal */}
+      <AnimatePresence>
+        {uploadModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 overflow-y-auto py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 my-auto sm:p-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Bulk Import Houses
+                </h2>
+                <button
+                  onClick={closeUploadModal}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Close modal"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUploadSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Village ID <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={villageId}
+                    onChange={(e) => setVillageId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                    placeholder="Enter village ID"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Excel File <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center justify-center w-full">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <File className="w-8 h-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">
+                          {uploadFile ? uploadFile.name : 'Click to select Excel file'}
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        ref={fileInputRef}
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={closeUploadModal}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={uploadLoading}
+                    className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {uploadLoading ? (
+                      <LoadingSpinner size="sm" color="white" />
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload File
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
