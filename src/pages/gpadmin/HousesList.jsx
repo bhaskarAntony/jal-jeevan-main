@@ -300,6 +300,7 @@ const HousesList = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {houses.map((house, index) => (
                     <motion.tr
+                    
                       key={house._id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}

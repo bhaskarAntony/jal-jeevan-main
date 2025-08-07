@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
-import { gpAdminAPI } from '../../services/api'
-import { useToast } from '../../contexts/ToastContext'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import ConfirmDialog from '../../components/ConfirmDialog'
-import { 
-  Plus, 
-  Search, 
-  Eye, 
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import { gpAdminAPI } from '../../services/api';
+import { useToast } from '../../contexts/ToastContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import {
+  Plus,
+  Search,
+  Eye,
   Trash2,
   Users,
   Mail,
@@ -23,14 +23,21 @@ import {
   Lock,
   Check,
   User
-} from 'lucide-react'
+} from 'lucide-react';
 
 const UsersList = () => {
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' })
-  const [editModal, setEditModal] = useState({ open: false, user: null })
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState(''); // Store user input
+  const [searchTerm, setSearchTerm] = useState(''); // Trigger API search
+  const [tempRoleFilter, setTempRoleFilter] = useState(''); // Temporary filter state
+  const [tempStatusFilter, setTempStatusFilter] = useState(''); // Temporary filter state
+  const [tempLastLoginFilter, setTempLastLoginFilter] = useState('last30days'); // Temporary filter state
+  const [roleFilter, setRoleFilter] = useState(''); // Applied filter state
+  const [statusFilter, setStatusFilter] = useState(''); // Applied filter state
+  const [lastLoginFilter, setLastLoginFilter] = useState('last30days'); // Applied filter state
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' });
+  const [editModal, setEditModal] = useState({ open: false, user: null });
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
@@ -38,69 +45,114 @@ const UsersList = () => {
     role: 'mobile_user',
     isActive: true,
     password: ''
-  })
+  });
   const [passwordRules, setPasswordRules] = useState({
     length: false,
     uppercase: false,
     lowercase: false,
     number: false,
     special: false
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const searchInputRef = useRef(null)
-  const { showSuccess, showError } = useToast()
-  const navigate = useNavigate()
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const searchInputRef = useRef(null);
+  const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
 
-  // Debounce search
+  // Fetch users when search or filters change
   useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchUsers()
-    }, 500)
-    return () => clearTimeout(handler)
-  }, [searchTerm])
+    fetchUsers();
+  }, [searchTerm, roleFilter, statusFilter, lastLoginFilter]);
 
   const fetchUsers = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await gpAdminAPI.getUsers({ search: searchTerm })
-      setUsers(response.data.data.users || [])
+      // Calculate date range for 'last30days'
+      const lastLoginRange = lastLoginFilter === 'last30days' ? {
+        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
+      } : {};
+
+      const response = await gpAdminAPI.getUsers({
+        search: searchTerm,
+        role: roleFilter,
+        isActive: statusFilter === '' ? undefined : statusFilter === 'active',
+        lastLoginRange
+      });
+      setUsers(response.data.data.users || []);
     } catch (error) {
-      showError('Failed to fetch users')
-      console.error('Fetch error:', error)
+      showError('Failed to fetch users');
+      console.error('Fetch error:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // Handle search button click or Enter key
+  const handleSearch = () => {
+    setSearchTerm(searchInput);
+  };
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value)
-  }
+    setSearchInput(e.target.value);
+  };
+
+  // Handle filter changes (temporary states)
+  const handleRoleFilterChange = (e) => {
+    setTempRoleFilter(e.target.value);
+  };
+
+  const handleStatusFilterChange = (e) => {
+    setTempStatusFilter(e.target.value);
+  };
+
+  const handleLastLoginFilterChange = (e) => {
+    setTempLastLoginFilter(e.target.value);
+  };
+
+  // Apply filters
+  const handleApplyFilters = () => {
+    setRoleFilter(tempRoleFilter);
+    setStatusFilter(tempStatusFilter);
+    setLastLoginFilter(tempLastLoginFilter);
+  };
+
+  // Clear all filters and search
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setTempRoleFilter('');
+    setTempStatusFilter('');
+    setTempLastLoginFilter('last30days');
+    setRoleFilter('');
+    setStatusFilter('');
+    setLastLoginFilter('last30days');
+  };
 
   const handleDelete = async (id) => {
     try {
-      await gpAdminAPI.deleteUser(id)
-      showSuccess('User deleted successfully')
-      fetchUsers()
+      await gpAdminAPI.deleteUser(id);
+      showSuccess('User deleted successfully');
+      fetchUsers();
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to delete user')
-      console.error('Delete error:', error)
+      showError(error.response?.data?.message || 'Failed to delete user');
+      console.error('Delete error:', error);
     } finally {
-      closeDeleteDialog()
+      closeDeleteDialog();
     }
-  }
+  };
 
   const openDeleteDialog = (id, name) => {
-    setDeleteDialog({ open: true, id, name })
-  }
+    setDeleteDialog({ open: true, id, name });
+  };
 
   const closeDeleteDialog = () => {
-    setDeleteDialog({ open: false, id: null, name: '' })
-  }
+    setDeleteDialog({ open: false, id: null, name: '' });
+  };
 
   const openEditModal = async (id) => {
     try {
-      const response = await gpAdminAPI.getUser(id)
-      const user = response.data.data
+      const response = await gpAdminAPI.getUser(id);
+      const user = response.data.data;
       setEditForm({
         name: user.name || '',
         email: user.email || '',
@@ -108,56 +160,56 @@ const UsersList = () => {
         role: user.role || 'mobile_user',
         isActive: user.isActive ?? true,
         password: ''
-      })
+      });
       setPasswordRules({
         length: false,
         uppercase: false,
         lowercase: false,
         number: false,
         special: false
-      })
-      setEditModal({ open: true, user })
+      });
+      setEditModal({ open: true, user });
     } catch (error) {
-      showError('Failed to fetch user details')
-      console.error('Fetch user error:', error)
+      showError('Failed to fetch user details');
+      console.error('Fetch user error:', error);
     }
-  }
+  };
 
   const handleEditChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type, checked } = e.target;
     setEditForm(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
-    }))
+    }));
     if (name === 'password') {
-      validatePassword(value)
+      validatePassword(value);
     }
-  }
+  };
 
   const validatePassword = (password) => {
-    if (!password) return true // Password is optional
+    if (!password) return true; // Password is optional
     const rules = {
       length: password.length >= 8,
       uppercase: /[A-Z]/.test(password),
       lowercase: /[a-z]/.test(password),
       number: /[0-9]/.test(password),
       special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
-    }
-    setPasswordRules(rules)
-    return Object.values(rules).every(rule => rule)
-  }
+    };
+    setPasswordRules(rules);
+    return Object.values(rules).every(rule => rule);
+  };
 
   const handleEditSubmit = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
+    e.preventDefault();
+    setSubmitting(true);
     try {
       if (!editForm.name || !editForm.email || !editForm.mobile || !editForm.role) {
-        showError('All required fields must be filled')
-        return
+        showError('All required fields must be filled');
+        return;
       }
       if (editForm.password && !validatePassword(editForm.password)) {
-        showError('Password does not meet all requirements')
-        return
+        showError('Password does not meet all requirements');
+        return;
       }
       const payload = {
         name: editForm.name,
@@ -165,13 +217,13 @@ const UsersList = () => {
         mobile: editForm.mobile,
         role: editForm.role,
         isActive: editForm.isActive
-      }
+      };
       if (editForm.password) {
-        payload.password = editForm.password
+        payload.password = editForm.password;
       }
-      await gpAdminAPI.updateUser(editModal.user._id, payload)
-      showSuccess('User updated successfully')
-      setEditModal({ open: false, user: null })
+      await gpAdminAPI.updateUser(editModal.user._id, payload);
+      showSuccess('User updated successfully');
+      setEditModal({ open: false, user: null });
       setEditForm({
         name: '',
         email: '',
@@ -179,58 +231,51 @@ const UsersList = () => {
         role: 'mobile_user',
         isActive: true,
         password: ''
-      })
+      });
       setPasswordRules({
         length: false,
         uppercase: false,
         lowercase: false,
         number: false,
         special: false
-      })
-      fetchUsers()
+      });
+      fetchUsers();
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to update user')
-      console.error('Update user error:', error)
+      showError(error.response?.data?.message || 'Failed to update user');
+      console.error('Update user error:', error);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
-
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.mobile?.includes(searchTerm) ||
-    user.role?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  };
 
   const getRoleBadge = (role) => {
     switch (role) {
       case 'gp_admin':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-100 text-blue-800';
       case 'mobile_user':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 text-green-800';
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 text-gray-800';
     }
-  }
+  };
 
   const getRoleIcon = (role) => {
     switch (role) {
       case 'gp_admin':
-        return Shield
+        return Shield;
       case 'mobile_user':
-        return Users
+        return Users;
       default:
-        return Users
+        return Users;
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
       </div>
-    )
+    );
   }
 
   return (
@@ -256,29 +301,78 @@ const UsersList = () => {
 
       {/* Search and Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search users by name, email, mobile, or role..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              ref={searchInputRef}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
-            />
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 flex-wrap">
+          {/* Search Input and Button */}
+          <div className="flex-1 flex items-center space-x-2 min-w-[200px]">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by name, email, mobile, or role..."
+                value={searchInput}
+                onChange={handleSearchChange}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                ref={searchInputRef}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
+            >
+              Search
+            </button>
           </div>
-          {/* <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors lg:w-auto">
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </button> */}
+          {/* Filters */}
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <select
+              value={tempRoleFilter}
+              onChange={handleRoleFilterChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm min-w-[120px]"
+            >
+              <option value="">All Roles</option>
+              <option value="gp_admin">GP Admin</option>
+              <option value="mobile_user">Mobile User</option>
+            </select>
+            <select
+              value={tempStatusFilter}
+              onChange={handleStatusFilterChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm min-w-[120px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <select
+              value={tempLastLoginFilter}
+              onChange={handleLastLoginFilterChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm min-w-[120px]"
+            >
+              <option value="last30days">Last 30 Days</option>
+              <option value="all">All Time</option>
+            </select>
+            <button
+              onClick={handleApplyFilters}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Apply Filters
+            </button>
+            <button
+              onClick={handleClearFilters}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Desktop Table View */}
       <div className="hidden lg:block">
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {filteredUsers.length > 0 ? (
+          {users.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -304,15 +398,16 @@ const UsersList = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user, index) => {
-                    const RoleIcon = getRoleIcon(user.role)
+                  {users.map((user, index) => {
+                    const RoleIcon = getRoleIcon(user.role);
                     return (
                       <motion.tr
                         key={user._id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
-                        className="hover:bg-gray-50 transition-colors"
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/gp-admin/user/${user._id}`)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -348,7 +443,7 @@ const UsersList = () => {
                           <div className="flex items-center text-sm text-gray-600">
                             <Activity className="w-4 h-4 mr-2" />
                             <span>
-                              {user.lastLogin 
+                              {user.lastLogin
                                 ? new Date(user.lastLogin).toLocaleDateString('en-IN')
                                 : 'Never'
                               }
@@ -357,8 +452,8 @@ const UsersList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.isActive 
-                              ? 'bg-green-100 text-green-800' 
+                            user.isActive
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
                           }`}>
                             {user.isActive ? 'Active' : 'Inactive'}
@@ -367,21 +462,21 @@ const UsersList = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => navigate(`/gp-admin/user/${user._id}`)}
+                              onClick={(e) => { e.stopPropagation(); navigate(`/gp-admin/user/${user._id}`); }}
                               className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
                               title="View Details"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => openEditModal(user._id)}
+                              onClick={(e) => { e.stopPropagation(); openEditModal(user._id); }}
                               className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => openDeleteDialog(user._id, user.name)}
+                              onClick={(e) => { e.stopPropagation(); openDeleteDialog(user._id, user.name); }}
                               className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete"
                             >
@@ -390,7 +485,7 @@ const UsersList = () => {
                           </div>
                         </td>
                       </motion.tr>
-                    )
+                    );
                   })}
                 </tbody>
               </table>
@@ -400,9 +495,11 @@ const UsersList = () => {
               <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
               <p className="text-gray-600 mb-4 text-sm">
-                {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first user'}
+                {searchTerm || roleFilter || statusFilter || lastLoginFilter !== 'last30days'
+                  ? 'Try adjusting your search or filter terms'
+                  : 'Get started by adding your first user'}
               </p>
-              {!searchTerm && (
+              {!searchTerm && !roleFilter && !statusFilter && lastLoginFilter === 'last30days' && (
                 <Link
                   to="/gp-admin/users/add"
                   className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
@@ -418,8 +515,8 @@ const UsersList = () => {
 
       {/* Mobile Card View */}
       <div className="lg:hidden space-y-4">
-        {filteredUsers.map((user, index) => {
-          const RoleIcon = getRoleIcon(user.role)
+        {users.map((user, index) => {
+          const RoleIcon = getRoleIcon(user.role);
           return (
             <motion.div
               key={user._id}
@@ -441,8 +538,8 @@ const UsersList = () => {
                   </div>
                 </div>
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                  user.isActive 
-                    ? 'bg-green-100 text-green-800' 
+                  user.isActive
+                    ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
                 }`}>
                   {user.isActive ? 'Active' : 'Inactive'}
@@ -461,7 +558,7 @@ const UsersList = () => {
                 <div className="flex items-center text-xs text-gray-600">
                   <Activity className="w-3 h-3 mr-2" />
                   <span>
-                    Last login: {user.lastLogin 
+                    Last login: {user.lastLogin
                       ? new Date(user.lastLogin).toLocaleDateString('en-IN')
                       : 'Never'
                     }
@@ -500,17 +597,19 @@ const UsersList = () => {
                 </button>
               </div>
             </motion.div>
-          )
+          );
         })}
 
-        {filteredUsers.length === 0 && (
+        {users.length === 0 && (
           <div className="text-center py-12">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
             <p className="text-gray-600 mb-4 text-sm">
-              {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first user'}
+              {searchTerm || roleFilter || statusFilter || lastLoginFilter !== 'last30days'
+                ? 'Try adjusting your search or filter terms'
+                : 'Get started by adding your first user'}
             </p>
-            {!searchTerm && (
+            {!searchTerm && !roleFilter && !statusFilter && lastLoginFilter === 'last30days' && (
               <Link
                 to="/gp-admin/users/add"
                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
@@ -734,7 +833,7 @@ const UsersList = () => {
         type="danger"
       />
     </div>
-  )
-}
+  );
+};
 
-export default UsersList
+export default UsersList;

@@ -10,11 +10,20 @@ import {
 
 const BillsList = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [bills, setBills] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, total: 1, count: 0, totalRecords: 0 });
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Store input separately
+  const [searchTerm, setSearchTerm] = useState(''); // Trigger search on button click
   const [statusFilter, setStatusFilter] = useState('');
+  const [villageFilter, setVillageFilter] = useState('');
+  const [billNumberFilter, setBillNumberFilter] = useState('');
+  const [ownerNameFilter, setOwnerNameFilter] = useState('');
+  const [meterNumberFilter, setMeterNumberFilter] = useState('');
+  const [dateRangeFilter, setDateRangeFilter] = useState('last15days'); // Default to 15-day range
+  const [villages, setVillages] = useState([]); // For village filter dropdown
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
@@ -36,26 +45,50 @@ const BillsList = () => {
   });
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [qrCode, setQrCode] = useState(null);
-  const { showSuccess, showError } = useToast();
-  const navigate = useNavigate();
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  // Fetch villages for filter dropdown
+  useEffect(() => {
+    const fetchVillages = async () => {
+      try {
+        const response = await gpAdminAPI.getVillages();
+        setVillages(response.data.villages || []);
+      } catch (error) {
+        showError('Failed to fetch villages');
+        console.error('Fetch villages error:', error);
+      }
+    };
+    fetchVillages();
+  }, []);
+
+  // Fetch bills when filters or pagination change
   useEffect(() => {
     fetchBills();
-  }, [searchTerm, statusFilter, pagination.current]);
+  }, [searchTerm, statusFilter, villageFilter, billNumberFilter, ownerNameFilter, meterNumberFilter, dateRangeFilter, pagination.current]);
 
   const fetchBills = async () => {
     setLoading(true);
     try {
+      // Calculate date range for 'last15days'
+      const dateRange = dateRangeFilter === 'last15days' ? {
+        startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
+      } : {};
+
       const response = await gpAdminAPI.getBills({
         page: pagination.current,
         limit: 10,
         search: searchTerm,
-        status: statusFilter
+        status: statusFilter,
+        village: villageFilter,
+        billNumber: billNumberFilter,
+        ownerName: ownerNameFilter,
+        waterMeterNumber: meterNumberFilter,
+        dateRange
       });
       setBills(response.data.data.bills);
       setPagination(response.data.data.pagination);
@@ -67,12 +100,43 @@ const BillsList = () => {
     }
   };
 
+  // Handle search button click
+  const handleSearch = () => {
+    setSearchTerm(searchInput);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
   const handlePageChange = (page) => {
     setPagination(prev => ({ ...prev, current: page }));
   };
 
   const handleStatusFilter = (status) => {
     setStatusFilter(status);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleVillageFilter = (village) => {
+    setVillageFilter(village);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleBillNumberFilter = (billNumber) => {
+    setBillNumberFilter(billNumber);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleOwnerNameFilter = (ownerName) => {
+    setOwnerNameFilter(ownerName);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleMeterNumberFilter = (meterNumber) => {
+    setMeterNumberFilter(meterNumber);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleDateRangeFilter = (range) => {
+    setDateRangeFilter(range);
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
@@ -271,40 +335,108 @@ const BillsList = () => {
             <Download className="w-5 h-5 mr-2" />
             Export Data
           </button>
-              <button
-                     onClick={() => navigate(`/gp-admin/new/bill`, { state: { loc: location.pathname } })}
-                     className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
-                   >
-                     <Plus className="w-5 h-5 mr-2" />
-                     Generate New Bill
-                   </button>
+          <button
+            onClick={() => navigate(`/gp-admin/new/bill`, { state: { loc: location.pathname } })}
+            className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Generate New Bill
+          </button>
         </div>
       </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 flex-wrap">
+          {/* Search Input and Button */}
+          <div className="flex-1 flex items-center space-x-2 min-w-[200px]">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by bill number, customer, meter, or village..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all text-sm"
+            >
+              Search
+            </button>
+          </div>
+          {/* Filters */}
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => handleStatusFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="pending">Pending</option>
+            </select>
+            <select
+              value={villageFilter}
+              onChange={(e) => handleVillageFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
+            >
+              <option value="">All Villages</option>
+              {villages.map(village => (
+                <option key={village} value={village}>{village}</option>
+              ))}
+            </select>
             <input
               type="text"
-              placeholder="Search bills by number, customer name, meter number, or village..."
-              value={searchTerm}
-              autoFocus
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+              placeholder="Bill Number"
+              value={billNumberFilter}
+              onChange={(e) => handleBillNumberFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
             />
+            <input
+              type="text"
+              placeholder="Customer Name"
+              value={ownerNameFilter}
+              onChange={(e) => handleOwnerNameFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
+            />
+            <input
+              type="text"
+              placeholder="Meter Number"
+              value={meterNumberFilter}
+              onChange={(e) => handleMeterNumberFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
+            />
+            <select
+              value={dateRangeFilter}
+              onChange={(e) => handleDateRangeFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
+            >
+              <option value="last15days">Last 15 Days</option>
+              <option value="all">All Time</option>
+            </select>
+            <button
+              onClick={() => {
+                setSearchInput('');
+                setSearchTerm('');
+                setStatusFilter('');
+                setVillageFilter('');
+                setBillNumberFilter('');
+                setOwnerNameFilter('');
+                setMeterNumberFilter('');
+                setDateRangeFilter('last15days');
+                setPagination(prev => ({ ...prev, current: 1 }));
+              }}
+              className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </button>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => handleStatusFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm lg:w-48"
-          >
-            <option value="">All Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="partial">Partial</option>
-            <option value="pending">Pending</option>
-          </select>
         </div>
       </div>
 
@@ -342,7 +474,8 @@ const BillsList = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50 transition-all"
+                    className="hover:bg-gray-50 transition-all cursor-pointer"
+                    onClick={() => handleViewBill(bill._id)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -389,14 +522,14 @@ const BillsList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => handleViewBill(bill._id)}
+                          onClick={(e) => { e.stopPropagation(); handleViewBill(bill._id); }}
                           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-all"
                           title="View Bill"
                         >
                           <Eye className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => handleDownloadPDF(bill._id)}
+                          onClick={(e) => { e.stopPropagation(); handleDownloadPDF(bill._id); }}
                           className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-full transition-all"
                           title="Download PDF"
                         >
@@ -405,21 +538,21 @@ const BillsList = () => {
                         {bill.status !== 'paid' && (
                           <>
                             <button
-                              onClick={() => handleEditBill(bill._id)}
+                              onClick={(e) => { e.stopPropagation(); handleEditBill(bill._id); }}
                               className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-all"
                               title="Edit Bill"
                             >
                               <Pencil className="w-5 h-5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteBill(bill._id)}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBill(bill._id); }}
                               className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-all"
                               title="Delete Bill"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
                             <button
-                              onClick={() => { setSelectedBill(bill._id); setIsBillModalOpen(true); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedBill(bill._id); setIsBillModalOpen(true); }}
                               className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-all"
                               title="Pay Bill"
                             >
@@ -439,9 +572,11 @@ const BillsList = () => {
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No bills found</h3>
             <p className="text-gray-600 mb-4">
-              {searchTerm || statusFilter ? 'Try adjusting your search or filter terms' : 'Get started by generating your first bill'}
+              {searchTerm || statusFilter || villageFilter || billNumberFilter || ownerNameFilter || meterNumberFilter
+                ? 'Try adjusting your search or filter terms'
+                : 'Get started by generating your first bill'}
             </p>
-            {!searchTerm && !statusFilter && (
+            {!searchTerm && !statusFilter && !villageFilter && !billNumberFilter && !ownerNameFilter && !meterNumberFilter && (
               <Link
                 to="/gp-admin/bills/generate"
                 className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
@@ -550,9 +685,11 @@ const BillsList = () => {
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No bills found</h3>
             <p className="text-gray-600 mb-4">
-              {searchTerm || statusFilter ? 'Try adjusting your search or filter terms' : 'Get started by generating your first bill'}
+              {searchTerm || statusFilter || villageFilter || billNumberFilter || ownerNameFilter || meterNumberFilter
+                ? 'Try adjusting your search or filter terms'
+                : 'Get started by generating your first bill'}
             </p>
-            {!searchTerm && !statusFilter && (
+            {!searchTerm && !statusFilter && !villageFilter && !billNumberFilter && !ownerNameFilter && !meterNumberFilter && (
               <Link
                 to="/gp-admin/bills/generate"
                 className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"

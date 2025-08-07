@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
-import { gpAdminAPI } from '../../services/api'
-import { useToast } from '../../contexts/ToastContext'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import ConfirmDialog from '../../components/ConfirmDialog'
-import { 
-  Plus, 
-  Search, 
-  Eye, 
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import { gpAdminAPI } from '../../services/api';
+import { useToast } from '../../contexts/ToastContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import {
+  Plus,
+  Search,
+  Eye,
   Trash2,
   MapPin,
   Users,
@@ -20,164 +20,195 @@ import {
   FileText,
   Building,
   Calendar
-} from 'lucide-react'
+} from 'lucide-react';
 
 const VillagesList = () => {
-  const [villages, setVillages] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' })
-  const [viewModal, setViewModal] = useState({ open: false, village: null })
-  const [editModal, setEditModal] = useState({ open: false, village: null })
-  const [editForm, setEditForm] = useState({ name: '', uniqueId: '', population: '', isActive: true })
-  const [submitting, setSubmitting] = useState(false)
-  const searchInputRef = useRef(null)
-  const { showSuccess, showError } = useToast()
-  const navigate = useNavigate()
+  const [villages, setVillages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [tempStatusFilter, setTempStatusFilter] = useState('');
+  const [tempPopulationFilter, setTempPopulationFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [populationFilter, setPopulationFilter] = useState('');
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' });
+  const [viewModal, setViewModal] = useState({ open: false, village: null });
+  const [editModal, setEditModal] = useState({ open: false, village: null });
+  const [editForm, setEditForm] = useState({ name: '', uniqueId: '', population: '', isActive: true });
+  const [submitting, setSubmitting] = useState(false);
+  const searchInputRef = useRef(null);
+  const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
 
-  // Debounce search to prevent excessive API calls
   useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchVillages()
-    }, 500)
-
-    return () => clearTimeout(handler)
-  }, [searchTerm])
+    fetchVillages();
+  }, [searchTerm, statusFilter, populationFilter]);
 
   const fetchVillages = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await gpAdminAPI.getVillages({ search: searchTerm })
-      setVillages(response.data.data.villages || [])
+      const populationRange = populationFilter === '0-500' ? { min: 0, max: 500 } :
+                             populationFilter === '500-1000' ? { min: 500, max: 1000 } :
+                             populationFilter === '1000+' ? { min: 1000 } : {};
+      const response = await gpAdminAPI.getVillages({
+        search: searchTerm,
+        isActive: statusFilter === '' ? undefined : statusFilter === 'active',
+        populationRange
+      });
+      setVillages(response.data.data.villages || []);
     } catch (error) {
-      showError('Failed to fetch villages')
-      console.error('Fetch error:', error)
+      showError('Failed to fetch villages');
+      console.error('Fetch error:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value)
-  }
+    setSearchInput(e.target.value);
+  };
+
+  const handleSearch = () => {
+    setSearchTerm(searchInput);
+  };
+
+  const handleStatusFilterChange = (e) => {
+    setTempStatusFilter(e.target.value);
+  };
+
+  const handlePopulationFilterChange = (e) => {
+    setTempPopulationFilter(e.target.value);
+  };
+
+  const handleApplyFilters = () => {
+    setStatusFilter(tempStatusFilter);
+    setPopulationFilter(tempPopulationFilter);
+  };
+
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setTempStatusFilter('');
+    setTempPopulationFilter('');
+    setStatusFilter('');
+    setPopulationFilter('');
+  };
 
   const handleDelete = async (id) => {
     try {
-      await gpAdminAPI.deleteVillage(id)
-      showSuccess('Village deleted successfully')
-      fetchVillages()
+      await gpAdminAPI.deleteVillage(id);
+      showSuccess('Village deleted successfully');
+      fetchVillages();
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to delete village')
-      console.error('Delete error:', error)
+      showError(error.response?.data?.message || 'Failed to delete village');
+      console.error('Delete error:', error);
     } finally {
-      closeDeleteDialog()
+      closeDeleteDialog();
     }
-  }
+  };
 
   const handleExportVillages = async () => {
     try {
-      const response = await gpAdminAPI.exportVillages()
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'villages_export.csv')
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      showSuccess('Villages exported successfully')
+      const response = await gpAdminAPI.exportVillages();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'villages_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showSuccess('Villages exported successfully');
     } catch (error) {
-      showError('Failed to export villages')
-      console.error('Export villages error:', error)
+      showError('Failed to export villages');
+      console.error('Export villages error:', error);
     }
-  }
+  };
 
   const openDeleteDialog = (id, name) => {
-    setDeleteDialog({ open: true, id, name })
-  }
+    setDeleteDialog({ open: true, id, name });
+  };
 
   const closeDeleteDialog = () => {
-    setDeleteDialog({ open: false, id: null, name: '' })
-  }
+    setDeleteDialog({ open: false, id: null, name: '' });
+  };
 
   const openViewModal = async (id) => {
     try {
-      const response = await gpAdminAPI.getVillage(id)
-      setViewModal({ open: true, village: response.data.data.village })
+      const response = await gpAdminAPI.getVillage(id);
+      setViewModal({ open: true, village: response.data.data.village });
     } catch (error) {
-      showError('Failed to fetch village details')
-      console.error('Fetch village error:', error)
+      showError('Failed to fetch village details');
+      console.error('Fetch village error:', error);
     }
-  }
+  };
 
   const closeViewModal = () => {
-    setViewModal({ open: false, village: null })
-  }
+    setViewModal({ open: false, village: null });
+  };
 
   const openEditModal = async (id) => {
     try {
       const response = await gpAdminAPI.getVillage(id);
-      console.log(response);
-      
-      const village = response.data.data.village
+      const village = response.data.data.village;
       setEditForm({
         name: village.name || '',
         uniqueId: village.uniqueId || '',
         population: village.population ? village.population.toString() : '',
         isActive: village.isActive ?? true
-      })
-      setEditModal({ open: true, village })
+      });
+      setEditModal({ open: true, village });
     } catch (error) {
-      showError('Failed to fetch village details')
-      console.error('Fetch village error:', error)
+      showError('Failed to fetch village details');
+      console.error('Fetch village error:', error);
     }
-  }
+  };
 
   const handleEditChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type, checked } = e.target;
     setEditForm(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
-    }))
-  }
+    }));
+  };
 
   const handleEditSubmit = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
+    e.preventDefault();
+    setSubmitting(true);
     try {
       if (!editForm.name || !editForm.uniqueId || !editForm.population) {
-        showError('All fields are required')
-        return
+        showError('All fields are required');
+        return;
       }
       if (isNaN(editForm.population) || parseInt(editForm.population) <= 0) {
-        showError('Population must be a positive number')
-        return
+        showError('Population must be a positive number');
+        return;
       }
       const payload = {
         name: editForm.name,
         uniqueId: editForm.uniqueId,
         population: parseInt(editForm.population),
         isActive: editForm.isActive
-      }
-      await gpAdminAPI.updateVillage(editModal.village._id, payload)
-      showSuccess('Village updated successfully')
-      setEditModal({ open: false, village: null })
-      setEditForm({ name: '', uniqueId: '', population: '', isActive: true })
-      fetchVillages()
+      };
+      await gpAdminAPI.updateVillage(editModal.village._id, payload);
+      showSuccess('Village updated successfully');
+      setEditModal({ open: false, village: null });
+      setEditForm({ name: '', uniqueId: '', population: '', isActive: true });
+      fetchVillages();
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to update village')
-      console.error('Update village error:', error)
+      showError(error.response?.data?.message || 'Failed to update village');
+      console.error('Update village error:', error);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
       </div>
-    )
+    );
   }
 
   return (
@@ -210,28 +241,63 @@ const VillagesList = () => {
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative items-center  gap-3 flex">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search villages by name or unique ID..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              ref={searchInputRef}
-              autoFocus
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
-            />
-            {/* <button onClick={ fetchVillages} className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
-          >Search</button> */}
-
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 flex-wrap">
+          <div className="flex-1 flex items-center space-x-2 min-w-[200px]">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search villages by name or unique ID..."
+                value={searchInput}
+                onChange={handleSearchChange}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                ref={searchInputRef}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                autoFocus
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
+            >
+              Search
+            </button>
           </div>
-          {/* <button
-            className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all lg:w-auto"
-          >
-            <Filter className="w-5 h-5 mr-2" />
-            Filters
-          </button> */}
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <select
+              value={tempStatusFilter}
+              onChange={handleStatusFilterChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm min-w-[120px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <select
+              value={tempPopulationFilter}
+              onChange={handlePopulationFilterChange}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm min-w-[120px]"
+            >
+              <option value="">All Populations</option>
+              <option value="0-500">&lt; 500</option>
+              <option value="500-1000">500 - 1000</option>
+              <option value="1000+">&gt; 1000</option>
+            </select>
+            <button
+              onClick={handleApplyFilters}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Apply Filters
+            </button>
+            <button
+              onClick={handleClearFilters}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </button>
+          </div>
         </div>
       </div>
 
@@ -266,10 +332,11 @@ const VillagesList = () => {
                 {villages.map((village, index) => (
                   <motion.tr
                     key={village._id}
+                    onClick={() => navigate(`/gp-admin/villages/${village._id}`)}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50 transition-all"
+                    className="hover:bg-gray-50 transition-all cursor-pointer"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -303,22 +370,21 @@ const VillagesList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => openViewModal(village._id)}
+                          onClick={(e) => { e.stopPropagation(); openViewModal(village._id); }}
                           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-all"
                           title="View Details"
                         >
                           <Eye className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => openEditModal(village._id)}
+                          onClick={(e) => { e.stopPropagation(); openEditModal(village._id); }}
                           className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-full transition-all"
                           title="Edit"
                         >
                           <Edit className="w-5 h-5" />
                         </button>
-                       
                         <button
-                          onClick={() => openDeleteDialog(village._id, village.name)}
+                          onClick={(e) => { e.stopPropagation(); openDeleteDialog(village._id, village.name); }}
                           className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-all"
                           title="Delete"
                         >
@@ -336,9 +402,9 @@ const VillagesList = () => {
             <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No villages found</h3>
             <p className="text-gray-600 mb-6 text-sm">
-              {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first village'}
+              {searchTerm || statusFilter || populationFilter ? 'Try adjusting your search or filter terms' : 'Get started by adding your first village'}
             </p>
-            {!searchTerm && (
+            {!searchTerm && !statusFilter && !populationFilter && (
               <Link
                 to="/gp-admin/villages/add"
                 className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
@@ -398,7 +464,7 @@ const VillagesList = () => {
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => openViewModal(village._id)}
+                  onClick={() => navigate(`/gp-admin/villages/${village._id}`)}
                   className="flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-all"
                 >
                   <Eye className="w-4 h-4 mr-1" />
@@ -434,9 +500,9 @@ const VillagesList = () => {
             <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No villages found</h3>
             <p className="text-gray-600 mb-6 text-sm">
-              {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first village'}
+              {searchTerm || statusFilter || populationFilter ? 'Try adjusting your search or filter terms' : 'Get started by adding your first village'}
             </p>
-            {!searchTerm && (
+            {!searchTerm && !statusFilter && !populationFilter && (
               <Link
                 to="/gp-admin/villages/add"
                 className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all"
@@ -678,7 +744,7 @@ const VillagesList = () => {
         type="danger"
       />
     </div>
-  )
-}
+  );
+};
 
-export default VillagesList
+export default VillagesList;
