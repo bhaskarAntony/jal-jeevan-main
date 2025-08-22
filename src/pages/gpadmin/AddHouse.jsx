@@ -18,6 +18,7 @@ const AddHouse = () => {
     usageType: 'residential',
     propertyNumber: ''
   })
+  const [errors, setErrors] = useState({})
   const [villages, setVillages] = useState([])
   const [loading, setLoading] = useState(false)
   const [villagesLoading, setVillagesLoading] = useState(true)
@@ -40,17 +41,38 @@ const AddHouse = () => {
     }
   }
 
+  const validateForm = () => {
+    const newErrors = {}
+    if (!formData.village) newErrors.village = 'Village is required'
+    if (!formData.ownerName.trim()) newErrors.ownerName = 'Owner name is required'
+    if (!/^\d{12}$/.test(formData.aadhaarNumber)) newErrors.aadhaarNumber = 'Aadhaar number must be exactly 12 digits'
+    if (!/^\+?\d{10,13}$/.test(formData.mobileNumber)) newErrors.mobileNumber = 'Mobile number must be 10-13 digits'
+    if (!formData.address.trim()) newErrors.address = 'Address is required'
+    if (!formData.waterMeterNumber.trim()) newErrors.waterMeterNumber = 'Water meter number is required'
+    if (!formData.propertyNumber.trim()) newErrors.propertyNumber = 'Property number is required'
+    if (formData.previousMeterReading < 0) newErrors.previousMeterReading = 'Meter reading cannot be negative'
+    if (!formData.usageType) newErrors.usageType = 'Usage type is required'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     })
+    // Clear error for the field being edited
+    setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!validateForm()) {
+      showError('Please correct the errors in the form')
+      return
+    }
     setLoading(true)
-
     try {
       await gpAdminAPI.createHouse(formData)
       showSuccess('House added successfully!')
@@ -120,6 +142,7 @@ const AddHouse = () => {
                   ))}
                 </select>
                 {villagesLoading && <p className="text-sm text-gray-500 mt-1">Loading villages...</p>}
+                {errors.village && <p className="text-sm text-red-600 mt-1">{errors.village}</p>}
               </div>
 
               <div>
@@ -135,6 +158,7 @@ const AddHouse = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Enter owner's full name"
                 />
+                {errors.ownerName && <p className="text-sm text-red-600 mt-1">{errors.ownerName}</p>}
               </div>
 
               <div>
@@ -150,6 +174,7 @@ const AddHouse = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="1234-5678-9012"
                 />
+                {errors.aadhaarNumber && <p className="text-sm text-red-600 mt-1">{errors.aadhaarNumber}</p>}
               </div>
 
               <div>
@@ -165,6 +190,7 @@ const AddHouse = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="+91 9876543210"
                 />
+                {errors.mobileNumber && <p className="text-sm text-red-600 mt-1">{errors.mobileNumber}</p>}
               </div>
 
               <div className="md:col-span-2">
@@ -180,6 +206,7 @@ const AddHouse = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Enter complete address"
                 />
+                {errors.address && <p className="text-sm text-red-600 mt-1">{errors.address}</p>}
               </div>
             </div>
           </div>
@@ -204,6 +231,7 @@ const AddHouse = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="WM001"
                 />
+                {errors.waterMeterNumber && <p className="text-sm text-red-600 mt-1">{errors.waterMeterNumber}</p>}
               </div>
 
               <div>
@@ -219,6 +247,7 @@ const AddHouse = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="P001"
                 />
+                {errors.propertyNumber && <p className="text-sm text-red-600 mt-1">{errors.propertyNumber}</p>}
               </div>
 
               <div>
@@ -231,13 +260,13 @@ const AddHouse = () => {
                   value={formData.usageType}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                
                 >
                   <option value="residential">Residential</option>
                   <option value="commercial">Commercial</option>
                   <option value="institutional">Institutional</option>
                   <option value="industrial">Industrial</option>
                 </select>
+                {errors.usageType && <p className="text-sm text-red-600 mt-1">{errors.usageType}</p>}
               </div>
 
               <div>
@@ -251,10 +280,11 @@ const AddHouse = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="0"
-                  min="0"
                   step="0.01"
+                  min="0"
                 />
                 <p className="text-sm text-gray-500 mt-1">Leave as 0 for new connections</p>
+                {errors.previousMeterReading && <p className="text-sm text-red-600 mt-1">{errors.previousMeterReading}</p>}
               </div>
             </div>
           </div>
@@ -270,12 +300,11 @@ const AddHouse = () => {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              // disabled={loading || Object.keys(errors).length > 0}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <LoadingSpinner size="sm" color="white" />
-              
               ) : (
                 'Add House'
               )}

@@ -137,6 +137,8 @@ const UpdateUserModal = ({ isOpen, onClose, user, onUpdateSuccess }) => {
                     type="tel"
                     name="mobile"
                     required
+                    minLength={10}
+                    maxLength={13}
                     value={formData.mobile}
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"

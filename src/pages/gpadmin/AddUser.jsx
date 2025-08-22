@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { gpAdminAPI } from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
-import { ArrowLeft, User, Mail, Phone, Shield, Lock, Check, X } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, Shield, Lock, Check, X, Eye, EyeOff } from 'lucide-react'
 
 const AddUser = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +14,7 @@ const AddUser = () => {
     password: '',
     role: 'mobile_user'
   })
+  const [showPassword, setShowPassword] = useState(false)
   const [passwordRules, setPasswordRules] = useState({
     length: false,
     uppercase: false,
@@ -21,6 +22,7 @@ const AddUser = () => {
     number: false,
     special: false
   })
+  const [errors, setErrors] = useState({})
   const [isPasswordValid, setIsPasswordValid] = useState(false)
   const [loading, setLoading] = useState(false)
   const { showSuccess, showError } = useToast()
@@ -38,6 +40,18 @@ const AddUser = () => {
     return { rules, isValid: Object.values(rules).every(rule => rule) }
   }
 
+  // Validate form fields
+  const validateForm = () => {
+    const newErrors = {}
+    if (!formData.name.trim()) newErrors.name = 'Full name is required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Valid email is required'
+    if (!/^\+?\d{10,13}$/.test(formData.mobile)) newErrors.mobile = 'Mobile number must be 10-13 digits'
+    if (!formData.role) newErrors.role = 'User role is required'
+    if (!isPasswordValid) newErrors.password = 'Password does not meet all requirements'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   // Update password rules and validity when password changes
   useEffect(() => {
     const { rules, isValid } = validatePassword(formData.password)
@@ -51,16 +65,13 @@ const AddUser = () => {
       ...prev,
       [name]: value
     }))
+    setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!isPasswordValid) {
-      showError('Password does not meet all requirements')
-      return
-    }
-    if (!formData.name.trim() || !formData.email.trim() || !formData.mobile.trim() || !formData.role) {
-      showError('All required fields must be filled')
+    if (!validateForm()) {
+      showError('Please correct the errors in the form')
       return
     }
     setLoading(true)
@@ -73,17 +84,6 @@ const AddUser = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Check if form is valid for enabling submit button
-  const isFormValid = () => {
-    return (
-      formData.name.trim() &&
-      formData.email.trim() &&
-      formData.mobile.trim() &&
-      isPasswordValid &&
-      formData.role
-    )
   }
 
   return (
@@ -132,6 +132,7 @@ const AddUser = () => {
                   placeholder="Enter full name"
                 />
               </div>
+              {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
             </div>
 
             <div>
@@ -150,6 +151,7 @@ const AddUser = () => {
                   placeholder="+91 9876543210"
                 />
               </div>
+              {errors.mobile && <p className="text-sm text-red-600 mt-1">{errors.mobile}</p>}
             </div>
 
             <div className="md:col-span-2">
@@ -168,6 +170,7 @@ const AddUser = () => {
                   placeholder="user@example.com"
                 />
               </div>
+              {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
             </div>
 
             <div>
@@ -190,6 +193,7 @@ const AddUser = () => {
               <p className="text-sm text-gray-500 mt-1">
                 Mobile users can manage bills and payments. GP Admins have full access.
               </p>
+              {errors.role && <p className="text-sm text-red-600 mt-1">{errors.role}</p>}
             </div>
 
             <div>
@@ -197,16 +201,23 @@ const AddUser = () => {
                 Password *
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                   placeholder="Enter password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               <div className="mt-2 space-y-1">
                 <p className="text-sm font-medium text-gray-700">Password must include:</p>
@@ -251,6 +262,7 @@ const AddUser = () => {
                   <span className="text-sm text-gray-600">One special character (!@#$%^&*(),.?":{}|)</span>
                 </div>
               </div>
+              {errors.password && <p className="text-sm text-red-600 mt-1">{errors.password}</p>}
             </div>
           </div>
 
@@ -265,7 +277,7 @@ const AddUser = () => {
             </button>
             <button
               type="submit"
-              disabled={loading || !isFormValid()}
+              // disabled={loading || Object.keys(errors).length > 0}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

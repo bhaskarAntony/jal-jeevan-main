@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { gpAdminAPI } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import {
   Plus, Search, Eye, FileText, Filter, Download, Printer, DollarSign, Calendar, User, X, QrCode, Pencil, Trash2
@@ -12,20 +13,22 @@ const BillsList = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
+  const { user, requestLoginOTP, verifyLoginOTP } = useAuth();
   const [bills, setBills] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, total: 1, count: 0, totalRecords: 0 });
   const [loading, setLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState(''); // Store input separately
-  const [searchTerm, setSearchTerm] = useState(''); // Trigger search on button click
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [villageFilter, setVillageFilter] = useState('');
   const [billNumberFilter, setBillNumberFilter] = useState('');
   const [ownerNameFilter, setOwnerNameFilter] = useState('');
   const [meterNumberFilter, setMeterNumberFilter] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState('last15days'); // Default to 15-day range
-  const [villages, setVillages] = useState([]); // For village filter dropdown
+  const [villages, setVillages] = useState([]);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+  const [showOTPInput, setShowOTPInput] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [billDetails, setBillDetails] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -36,6 +39,8 @@ const BillsList = () => {
     interest: '',
     others: ''
   });
+  const [otpInput, setOtpInput] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -68,17 +73,11 @@ const BillsList = () => {
   // Fetch bills when filters or pagination change
   useEffect(() => {
     fetchBills();
-  }, [searchTerm, statusFilter, villageFilter, billNumberFilter, ownerNameFilter, meterNumberFilter, dateRangeFilter, pagination.current]);
+  }, [searchTerm, statusFilter, villageFilter, billNumberFilter, ownerNameFilter, meterNumberFilter, pagination.current]);
 
   const fetchBills = async () => {
     setLoading(true);
     try {
-      // Calculate date range for 'last15days'
-      const dateRange = dateRangeFilter === 'last15days' ? {
-        startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0]
-      } : {};
-
       const response = await gpAdminAPI.getBills({
         page: pagination.current,
         limit: 10,
@@ -87,8 +86,7 @@ const BillsList = () => {
         village: villageFilter,
         billNumber: billNumberFilter,
         ownerName: ownerNameFilter,
-        waterMeterNumber: meterNumberFilter,
-        dateRange
+        waterMeterNumber: meterNumberFilter
       });
       setBills(response.data.data.bills);
       setPagination(response.data.data.pagination);
@@ -100,7 +98,6 @@ const BillsList = () => {
     }
   };
 
-  // Handle search button click
   const handleSearch = () => {
     setSearchTerm(searchInput);
     setPagination(prev => ({ ...prev, current: 1 }));
@@ -135,11 +132,6 @@ const BillsList = () => {
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
-  const handleDateRangeFilter = (range) => {
-    setDateRangeFilter(range);
-    setPagination(prev => ({ ...prev, current: 1 }));
-  };
-
   const handleViewBill = async (billId) => {
     try {
       const response = await gpAdminAPI.getBill(billId);
@@ -165,10 +157,49 @@ const BillsList = () => {
         others: bill.others.toString()
       });
       setSelectedBill(billId);
-      setIsEditModalOpen(true);
+      setIsOTPModalOpen(true); // Show OTP verification popup immediately
     } catch (error) {
-      showError('Failed to fetch bill details for editing');
+      showError('Failed to initiate edit process');
       console.error('Fetch bill error:', error);
+    }
+  };
+
+  const handleSendOTP = async () => {
+    try {
+      setOtpLoading(true);
+      const otpResponse = await requestLoginOTP(user.email);
+      if (otpResponse.success) {
+        showSuccess(otpResponse.message);
+        setShowOTPInput(true); // Show OTP input field after sending OTP
+      } else {
+        showError(otpResponse.message);
+      }
+    } catch (error) {
+      showError('Failed to send OTP');
+      console.error('Send OTP error:', error);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    try {
+      setOtpLoading(true);
+      const response = await verifyLoginOTP(user.email, otpInput);
+      if (response.success) {
+        showSuccess('OTP verified successfully');
+        setIsOTPModalOpen(false);
+        setShowOTPInput(false);
+        setOtpInput('');
+        setIsEditModalOpen(true); // Show edit form after successful OTP verification
+      } else {
+        showError(response.message);
+      }
+    } catch (error) {
+      showError('Invalid OTP');
+      console.error('Verify OTP error:', error);
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -200,6 +231,7 @@ const BillsList = () => {
         interest: '',
         others: ''
       });
+      setOtpInput('');
       fetchBills();
     } catch (error) {
       showError(error.response?.data?.message || 'Failed to update bill');
@@ -348,7 +380,6 @@ const BillsList = () => {
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4 flex-wrap">
-          {/* Search Input and Button */}
           <div className="flex-1 flex items-center space-x-2 min-w-[200px]">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -368,7 +399,6 @@ const BillsList = () => {
               Search
             </button>
           </div>
-          {/* Filters */}
           <div className="flex items-center space-x-2 flex-wrap gap-2">
             <select
               value={statusFilter}
@@ -411,14 +441,6 @@ const BillsList = () => {
               onChange={(e) => handleMeterNumberFilter(e.target.value)}
               className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
             />
-            <select
-              value={dateRangeFilter}
-              onChange={(e) => handleDateRangeFilter(e.target.value)}
-              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm min-w-[120px]"
-            >
-              <option value="last15days">Last 15 Days</option>
-              <option value="all">All Time</option>
-            </select>
             <button
               onClick={() => {
                 setSearchInput('');
@@ -428,7 +450,6 @@ const BillsList = () => {
                 setBillNumberFilter('');
                 setOwnerNameFilter('');
                 setMeterNumberFilter('');
-                setDateRangeFilter('last15days');
                 setPagination(prev => ({ ...prev, current: 1 }));
               }}
               className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
@@ -755,7 +776,6 @@ const BillsList = () => {
               </div>
 
               <div className="space-y-6">
-                {/* Bill Details */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Bill Details</h3>
                   <div className="space-y-4">
@@ -823,7 +843,6 @@ const BillsList = () => {
                   </div>
                 </div>
 
-                {/* Payment History */}
                 {billDetails.payments.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment History</h3>
@@ -857,7 +876,6 @@ const BillsList = () => {
                   </div>
                 )}
 
-                {/* QR Code */}
                 {billDetails.bill.status !== 'paid' && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">UPI Payment</h3>
@@ -879,7 +897,6 @@ const BillsList = () => {
                   </div>
                 )}
 
-                {/* Payment Form */}
                 {billDetails.bill.status !== 'paid' && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Record Payment</h3>
@@ -965,6 +982,106 @@ const BillsList = () => {
                       </div>
                     </form>
                   </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* OTP Verification Modal */}
+      <AnimatePresence>
+        {isOTPModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 overflow-y-auto py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 my-auto sm:p-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Verify OTP to Edit
+                </h2>
+                <button
+                  onClick={() => { setIsOTPModalOpen(false); setShowOTPInput(false); setOtpInput(''); }}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+                  aria-label="Close modal"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="space-y-5">
+                {!showOTPInput ? (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      To edit this bill, you need to verify your identity with an OTP sent to {user.email}.
+                    </p>
+                    <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => { setIsOTPModalOpen(false); setShowOTPInput(false); setOtpInput(''); }}
+                        className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSendOTP}
+                        disabled={otpLoading}
+                        className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {otpLoading ? (
+                          <LoadingSpinner size="sm" color="white" />
+                        ) : (
+                          'Send OTP'
+                        )}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      An OTP has been sent to {user.email}. Please enter it below to proceed with editing the bill.
+                    </p>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        OTP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={otpInput}
+                        onChange={(e) => setOtpInput(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                        placeholder="Enter OTP"
+                        required
+                      />
+                    </div>
+                    <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => { setIsOTPModalOpen(false); setShowOTPInput(false); setOtpInput(''); }}
+                        className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleVerifyOTP}
+                        disabled={otpLoading || !otpInput}
+                        className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {otpLoading ? (
+                          <LoadingSpinner size="sm" color="white" />
+                        ) : (
+                          'Verify OTP'
+                        )}
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </motion.div>

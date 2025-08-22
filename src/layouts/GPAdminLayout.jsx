@@ -31,9 +31,10 @@ const GPAdminLayout = () => {
   const navigate = useNavigate();
   const timeoutRef = useRef(null);
   const warningTimeoutRef = useRef(null);
+  const profileButtonRef = useRef(null);
 
-  const SESSION_TIMEOUT = 120000; // 2 minutes in milliseconds
-  const WARNING_TIMEOUT = 105000; // 1 minute 45 seconds (15 seconds before logout)
+  const SESSION_TIMEOUT = 900000; // 2 minutes in milliseconds
+  const WARNING_TIMEOUT = 890000; // 1 minute 45 seconds (15 seconds before logout)
 
   const navigation = [
     { name: 'Dashboard', href: '/gp-admin/dashboard', icon: Home },
@@ -74,6 +75,20 @@ const GPAdminLayout = () => {
   const handleActivity = () => {
     resetTimeout();
   };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileButtonRef.current && !profileButtonRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Set up event listeners and initial timer
   useEffect(() => {
@@ -267,7 +282,7 @@ const GPAdminLayout = () => {
 
           <div className="flex items-center space-x-4">
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={profileButtonRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center space-x-3 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 p-2 hover:bg-gray-100 transition-colors"

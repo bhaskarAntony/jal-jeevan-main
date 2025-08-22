@@ -164,7 +164,7 @@ const Calculations = () => {
                 onChange={(e) => handleDomesticChange('upTo7KL', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -179,7 +179,7 @@ const Calculations = () => {
                 onChange={(e) => handleDomesticChange('from7to10KL', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -194,7 +194,7 @@ const Calculations = () => {
                 onChange={(e) => handleDomesticChange('from10to15KL', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -209,7 +209,7 @@ const Calculations = () => {
                 onChange={(e) => handleDomesticChange('from15to20KL', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -224,7 +224,7 @@ const Calculations = () => {
                 onChange={(e) => handleDomesticChange('above20KL', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -259,7 +259,7 @@ const Calculations = () => {
                 onChange={(e) => handleNonDomesticChange('publicPrivateInstitutions', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -274,7 +274,7 @@ const Calculations = () => {
                 onChange={(e) => handleNonDomesticChange('commercialEnterprises', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>
@@ -289,7 +289,7 @@ const Calculations = () => {
                 onChange={(e) => handleNonDomesticChange('industrialEnterprises', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
                 placeholder="0.00"
-                min="0"
+                
                 step="0.01"
               />
             </div>

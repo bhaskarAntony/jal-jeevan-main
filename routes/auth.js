@@ -13,21 +13,30 @@
  *           type: string
  *         role:
  *           type: string
- *           enum: [super_admin, gp_admin, mobile_user]
+ *           enum: [super_admin, gp_admin, mobile_user, pillar_admin]
  *         gramPanchayat:
  *           type: string
- *     LoginRequest:
+ *     RequestOTP:
  *       type: object
  *       required:
  *         - email
- *         - password
  *       properties:
  *         email:
  *           type: string
  *           format: email
- *         password:
+ *     VerifyOTP:
+ *       type: object
+ *       required:
+ *         - email
+ *         - otp
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         otp:
  *           type: string
  *           minLength: 6
+ *           maxLength: 6
  *     ForgotPasswordRequest:
  *       type: object
  *       required:
@@ -36,13 +45,31 @@
  *         email:
  *           type: string
  *           format: email
+ *     ResetPasswordRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *         - otp
+ *         - newPassword
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         otp:
+ *           type: string
+ *           minLength: 6
+ *           maxLength: 6
+ *         newPassword:
+ *           type: string
+ *           minLength: 6
  */
 
 const express = require('express');
 const router = express.Router();
 const { validate, schemas } = require('../middleware/validation');
 const {
-  login,
+  requestLoginOTP,
+  verifyLoginOTP,
   forgotPassword,
   verifyOTP,
   resetPassword,
@@ -52,16 +79,52 @@ const { auth } = require('../middleware/auth');
 
 /**
  * @swagger
- * /api/auth/login:
+ * /api/auth/request-otp:
  *   post:
- *     summary: User login
+ *     summary: Request OTP for login
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/LoginRequest'
+ *             $ref: '#/components/schemas/RequestOTP'
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     email:
+ *                       type: string
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/request-otp', validate(schemas.requestOTP), requestLoginOTP);
+
+/**
+ * @swagger
+ * /api/auth/verify-login-otp:
+ *   post:
+ *     summary: Verify OTP and login
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyOTP'
  *     responses:
  *       200:
  *         description: Login successful
@@ -81,10 +144,12 @@ const { auth } = require('../middleware/auth');
  *                       type: string
  *                     user:
  *                       $ref: '#/components/schemas/User'
- *       401:
- *         description: Invalid credentials
+ *       400:
+ *         description: Invalid or expired OTP
+ *       500:
+ *         description: Server error
  */
-router.post('/login', validate(schemas.login), login);
+router.post('/verify-login-otp', validate(schemas.verifyOTP), verifyLoginOTP);
 
 /**
  * @swagger
@@ -101,6 +166,19 @@ router.post('/login', validate(schemas.login), login);
  *     responses:
  *       200:
  *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
  */
 router.post('/forgot-password', validate(schemas.forgotPassword), forgotPassword);
 
@@ -108,28 +186,30 @@ router.post('/forgot-password', validate(schemas.forgotPassword), forgotPassword
  * @swagger
  * /api/auth/verify-otp:
  *   post:
- *     summary: Verify OTP code
+ *     summary: Verify OTP code for password reset
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - otp
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               otp:
- *                 type: string
- *                 minLength: 6
- *                 maxLength: 6
+ *             $ref: '#/components/schemas/VerifyOTP'
  *     responses:
  *       200:
  *         description: OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid or expired OTP
+ *       500:
+ *         description: Server error
  */
 router.post('/verify-otp', validate(schemas.verifyOTP), verifyOTP);
 
@@ -144,26 +224,23 @@ router.post('/verify-otp', validate(schemas.verifyOTP), verifyOTP);
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - otp
- *               - newPassword
- *               - confirmPassword
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               otp:
- *                 type: string
- *               newPassword:
- *                 type: string
- *                 minLength: 6
- *               confirmPassword:
- *                 type: string
+ *             $ref: '#/components/schemas/ResetPasswordRequest'
  *     responses:
  *       200:
  *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid or expired OTP
+ *       500:
+ *         description: Server error
  */
 router.post('/reset-password', validate(schemas.resetPassword), resetPassword);
 
@@ -187,6 +264,10 @@ router.post('/reset-password', validate(schemas.resetPassword), resetPassword);
  *                   type: boolean
  *                 data:
  *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.get('/profile', auth, getProfile);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
@@ -27,6 +27,7 @@ const SuperAdminLayout = () => {
   const { showSuccess } = useToast()
   const location = useLocation()
   const navigate = useNavigate()
+  const profileButtonRef = useRef(null)
 
   const navigation = [
     { 
@@ -60,6 +61,20 @@ const SuperAdminLayout = () => {
     //   description: 'System configuration'
     // },
   ]
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileButtonRef.current && !profileButtonRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -206,7 +221,7 @@ const SuperAdminLayout = () => {
             </button> */}
 
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={profileButtonRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center space-x-3 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 p-2 hover:bg-gray-100 transition-colors"

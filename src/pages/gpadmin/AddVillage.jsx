@@ -12,21 +12,36 @@ const AddVillage = () => {
     uniqueId: '',
     population: ''
   })
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
 
+  const validateForm = () => {
+    const newErrors = {}
+    if (!formData.name.trim()) newErrors.name = 'Village name is required'
+    if (!/^[A-Za-z0-9-]+$/.test(formData.uniqueId)) newErrors.uniqueId = 'Unique ID must be alphanumeric (letters, numbers, or hyphens)'
+    if (!formData.population || formData.population < 1) newErrors.population = 'Population must be a positive number'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     })
+    setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!validateForm()) {
+      showError('Please correct the errors in the form')
+      return
+    }
     setLoading(true)
-
     try {
       await gpAdminAPI.createVillage(formData)
       showSuccess('Village added successfully!')
@@ -81,6 +96,7 @@ const AddVillage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Enter village name"
               />
+              {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
             </div>
 
             <div>
@@ -96,6 +112,7 @@ const AddVillage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Enter unique ID (e.g., VL001)"
               />
+              {errors.uniqueId && <p className="text-sm text-red-600 mt-1">{errors.uniqueId}</p>}
             </div>
 
             <div className="md:col-span-2">
@@ -112,6 +129,7 @@ const AddVillage = () => {
                 placeholder="Enter population count"
                 min="1"
               />
+              {errors.population && <p className="text-sm text-red-600 mt-1">{errors.population}</p>}
             </div>
           </div>
 
@@ -126,7 +144,7 @@ const AddVillage = () => {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              // disabled={loading || Object.keys(errors).length > 0}
               className="flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

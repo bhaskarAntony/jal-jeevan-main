@@ -732,7 +732,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for up to 7KL"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -747,7 +747,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for 7-10KL"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -762,7 +762,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for 10-15KL"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -777,7 +777,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for 15-20KL"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -792,7 +792,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for above 20KL"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -807,7 +807,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for public/private institutions"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -822,7 +822,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for commercial enterprises"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>
@@ -837,7 +837,7 @@ const openEditModal = async (id) => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter tariff for industrial enterprises"
-                    min="0"
+                    
                     step="0.01"
                   />
                 </div>

@@ -9,24 +9,77 @@ const generateToken = (id) => {
   });
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
+// @desc    Request OTP for login
+// @route   POST /api/auth/request-otp
 // @access  Public
-const login = async (req, res) => {
+const requestLoginOTP = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
 
     // Check if user exists
     const user = await User.findOne({ email, isActive: true })
       .populate('gramPanchayat');
 
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'User not found'
       });
     }
 
+    // Generate OTP
+    const otp = user.generateOTP();
+    await user.save();
+
+    // Send OTP email
+    const emailResult = await sendOTPEmail(email, otp, user.name);
+    
+    if (!emailResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'OTP sent to your email',
+      data: { email }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Verify OTP and login
+// @route   POST /api/auth/verify-login-otp
+// @access  Public
+const verifyLoginOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({
+      email,
+      otpCode: otp,
+      otpExpires: { $gt: Date.now() },
+      isActive: true
+    }).populate('gramPanchayat');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Clear OTP
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    
     // Update last login
     user.lastLogin = new Date();
     await user.save();
@@ -196,7 +249,8 @@ const getProfile = async (req, res) => {
 };
 
 module.exports = {
-  login,
+  requestLoginOTP,
+  verifyLoginOTP,
   forgotPassword,
   verifyOTP,
   resetPassword,

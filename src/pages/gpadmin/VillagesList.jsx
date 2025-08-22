@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { gpAdminAPI } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import {
@@ -18,7 +19,6 @@ import {
   X,
   Save,
   FileText,
-  Building,
   Calendar
 } from 'lucide-react';
 
@@ -34,10 +34,17 @@ const VillagesList = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' });
   const [viewModal, setViewModal] = useState({ open: false, village: null });
   const [editModal, setEditModal] = useState({ open: false, village: null });
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+  const [otpAction, setOtpAction] = useState(null); // 'edit' or 'delete'
+  const [otpActionData, setOtpActionData] = useState(null); // Data for the action (e.g., village ID for delete)
+  const [showOTPInput, setShowOTPInput] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', uniqueId: '', population: '', isActive: true });
   const [submitting, setSubmitting] = useState(false);
   const searchInputRef = useRef(null);
   const { showSuccess, showError } = useToast();
+  const { user, requestLoginOTP, verifyLoginOTP } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,14 +58,14 @@ const VillagesList = () => {
                              populationFilter === '500-1000' ? { min: 500, max: 1000 } :
                              populationFilter === '1000+' ? { min: 1000 } : {};
       const response = await gpAdminAPI.getVillages({
-        search: searchTerm,
+        search: searchTerm || undefined,
         isActive: statusFilter === '' ? undefined : statusFilter === 'active',
         populationRange
       });
       setVillages(response.data.data.villages || []);
     } catch (error) {
       showError('Failed to fetch villages');
-      console.error('Fetch error:', error);
+      console.error('Fetch villages error:', error);
     } finally {
       setLoading(false);
     }
@@ -94,59 +101,6 @@ const VillagesList = () => {
     setPopulationFilter('');
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await gpAdminAPI.deleteVillage(id);
-      showSuccess('Village deleted successfully');
-      fetchVillages();
-    } catch (error) {
-      showError(error.response?.data?.message || 'Failed to delete village');
-      console.error('Delete error:', error);
-    } finally {
-      closeDeleteDialog();
-    }
-  };
-
-  const handleExportVillages = async () => {
-    try {
-      const response = await gpAdminAPI.exportVillages();
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'villages_export.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      showSuccess('Villages exported successfully');
-    } catch (error) {
-      showError('Failed to export villages');
-      console.error('Export villages error:', error);
-    }
-  };
-
-  const openDeleteDialog = (id, name) => {
-    setDeleteDialog({ open: true, id, name });
-  };
-
-  const closeDeleteDialog = () => {
-    setDeleteDialog({ open: false, id: null, name: '' });
-  };
-
-  const openViewModal = async (id) => {
-    try {
-      const response = await gpAdminAPI.getVillage(id);
-      setViewModal({ open: true, village: response.data.data.village });
-    } catch (error) {
-      showError('Failed to fetch village details');
-      console.error('Fetch village error:', error);
-    }
-  };
-
-  const closeViewModal = () => {
-    setViewModal({ open: false, village: null });
-  };
-
   const openEditModal = async (id) => {
     try {
       const response = await gpAdminAPI.getVillage(id);
@@ -157,10 +111,72 @@ const VillagesList = () => {
         population: village.population ? village.population.toString() : '',
         isActive: village.isActive ?? true
       });
-      setEditModal({ open: true, village });
+      setOtpAction('edit');
+      setOtpActionData({ village });
+      setIsOTPModalOpen(true);
     } catch (error) {
       showError('Failed to fetch village details');
       console.error('Fetch village error:', error);
+    }
+  };
+
+  const closeEditModal = () => {
+    setEditModal({ open: false, village: null });
+    setEditForm({ name: '', uniqueId: '', population: '', isActive: true });
+  };
+
+  const openDeleteDialog = (id, name) => {
+    setOtpAction('delete');
+    setOtpActionData({ id, name });
+    setIsOTPModalOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ open: false, id: null, name: '' });
+  };
+
+  const handleSendOTP = async () => {
+    try {
+      setOtpLoading(true);
+      const otpResponse = await requestLoginOTP(user.email);
+      if (otpResponse.success) {
+        showSuccess(otpResponse.message);
+        setShowOTPInput(true);
+      } else {
+        showError(otpResponse.message);
+      }
+    } catch (error) {
+      showError('Failed to send OTP');
+      console.error('Send OTP error:', error);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    try {
+      setOtpLoading(true);
+      const response = await verifyLoginOTP(user.email, otpInput);
+      if (response.success) {
+        showSuccess('OTP verified successfully');
+        setIsOTPModalOpen(false);
+        setShowOTPInput(false);
+        setOtpInput('');
+        if (otpAction === 'edit') {
+          setEditModal({ open: true, village: otpActionData.village });
+        } else if (otpAction === 'delete') {
+          setDeleteDialog({ open: true, id: otpActionData.id, name: otpActionData.name });
+        }
+        setOtpAction(null);
+        setOtpActionData(null);
+      } else {
+        showError(response.message);
+      }
+    } catch (error) {
+      showError('Invalid OTP');
+      console.error('Verify OTP error:', error);
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -192,8 +208,7 @@ const VillagesList = () => {
       };
       await gpAdminAPI.updateVillage(editModal.village._id, payload);
       showSuccess('Village updated successfully');
-      setEditModal({ open: false, village: null });
-      setEditForm({ name: '', uniqueId: '', population: '', isActive: true });
+      closeEditModal();
       fetchVillages();
     } catch (error) {
       showError(error.response?.data?.message || 'Failed to update village');
@@ -201,6 +216,51 @@ const VillagesList = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await gpAdminAPI.deleteVillage(id);
+      showSuccess('Village deleted successfully');
+      fetchVillages();
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to delete village');
+      console.error('Delete village error:', error);
+    } finally {
+      closeDeleteDialog();
+    }
+  };
+
+  const handleExportVillages = async () => {
+    try {
+      const response = await gpAdminAPI.exportVillages();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'villages_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showSuccess('Villages exported successfully');
+    } catch (error) {
+      showError('Failed to export villages');
+      console.error('Export villages error:', error);
+    }
+  };
+
+  const openViewModal = async (id) => {
+    try {
+      const response = await gpAdminAPI.getVillage(id);
+      setViewModal({ open: true, village: response.data.data.village });
+    } catch (error) {
+      showError('Failed to fetch village details');
+      console.error('Fetch village error:', error);
+    }
+  };
+
+  const closeViewModal = () => {
+    setViewModal({ open: false, village: null });
   };
 
   if (loading) {
@@ -515,6 +575,106 @@ const VillagesList = () => {
         )}
       </div>
 
+      {/* OTP Verification Modal */}
+      <AnimatePresence>
+        {isOTPModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 overflow-y-auto py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 my-auto sm:p-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Verify OTP to {otpAction === 'edit' ? 'Edit' : 'Delete'}
+                </h2>
+                <button
+                  onClick={() => { setIsOTPModalOpen(false); setShowOTPInput(false); setOtpInput(''); setOtpAction(null); setOtpActionData(null); }}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+                  aria-label="Close modal"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="space-y-5">
+                {!showOTPInput ? (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      To {otpAction === 'edit' ? 'edit' : 'delete'} this village, you need to verify your identity with an OTP sent to {user.email}.
+                    </p>
+                    <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => { setIsOTPModalOpen(false); setShowOTPInput(false); setOtpInput(''); setOtpAction(null); setOtpActionData(null); }}
+                        className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSendOTP}
+                        disabled={otpLoading}
+                        className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {otpLoading ? (
+                          <LoadingSpinner size="sm" color="white" />
+                        ) : (
+                          'Send OTP'
+                        )}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      An OTP has been sent to {user.email}. Please enter it below to proceed with {otpAction === 'edit' ? 'editing' : 'deleting'} the village.
+                    </p>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        OTP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={otpInput}
+                        onChange={(e) => setOtpInput(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
+                        placeholder="Enter OTP"
+                        required
+                      />
+                    </div>
+                    <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => { setIsOTPModalOpen(false); setShowOTPInput(false); setOtpInput(''); setOtpAction(null); setOtpActionData(null); }}
+                        className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleVerifyOTP}
+                        disabled={otpLoading || !otpInput}
+                        className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {otpLoading ? (
+                          <LoadingSpinner size="sm" color="white" />
+                        ) : (
+                          'Verify OTP'
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* View Village Modal */}
       <AnimatePresence>
         {viewModal.open && viewModal.village && (
@@ -532,7 +692,7 @@ const VillagesList = () => {
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  {viewModal.village.name}
+                  Village Details
                 </h2>
                 <button
                   onClick={closeViewModal}
@@ -542,71 +702,38 @@ const VillagesList = () => {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Village Details</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-4">
-                      <MapPin className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Name</p>
-                        <p className="text-sm text-gray-900">{viewModal.village.name}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <FileText className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Unique ID</p>
-                        <p className="text-sm text-gray-900">{viewModal.village.uniqueId}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <Users className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Population</p>
-                        <p className="text-sm text-gray-900">{viewModal.village.population?.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <Building className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Houses</p>
-                        <p className="text-sm text-gray-900">{viewModal.village.houseCount || 0}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <Users className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Gram Panchayat</p>
-                        <p className="text-sm text-gray-900">{viewModal.village.gramPanchayat?.name || 'N/A'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <Calendar className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Created</p>
-                        <p className="text-sm text-gray-900">
-                          {new Date(viewModal.village.createdAt).toLocaleDateString('en-IN')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <FileText className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Status</p>
-                        <p className="text-sm text-gray-900">
-                          <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
-                            viewModal.village.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {viewModal.village.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-gray-700">Village Name</h3>
+                  <p className="text-sm text-gray-900">{viewModal.village.name}</p>
                 </div>
-                <div className="flex justify-end">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Unique ID</h3>
+                  <p className="text-sm text-gray-900">{viewModal.village.uniqueId}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Population</h3>
+                  <p className="text-sm text-gray-900">{viewModal.village.population?.toLocaleString()}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Houses</h3>
+                  <p className="text-sm text-gray-900">{viewModal.village.houseCount || 0}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Status</h3>
+                  <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                    viewModal.village.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {viewModal.village.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Created At</h3>
+                  <p className="text-sm text-gray-900">
+                    {new Date(viewModal.village.createdAt).toLocaleDateString('en-IN')}
+                  </p>
+                </div>
+                <div className="flex items-center justify-end pt-4 border-t border-gray-200">
                   <button
                     onClick={closeViewModal}
                     className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
@@ -640,14 +767,13 @@ const VillagesList = () => {
                   Edit Village
                 </h2>
                 <button
-                  onClick={() => setEditModal({ open: false, village: null })}
+                  onClick={closeEditModal}
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
                   aria-label="Close modal"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
               <form onSubmit={handleEditSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -688,7 +814,7 @@ const VillagesList = () => {
                     onChange={handleEditChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                     placeholder="Enter population"
-                    min="1"
+                    min="0"
                     required
                   />
                 </div>
@@ -707,7 +833,7 @@ const VillagesList = () => {
                 <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
                   <button
                     type="button"
-                    onClick={() => setEditModal({ open: false, village: null })}
+                    onClick={closeEditModal}
                     className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
                   >
                     Cancel
@@ -721,7 +847,7 @@ const VillagesList = () => {
                       <LoadingSpinner size="sm" color="white" />
                     ) : (
                       <>
-                        <Save className="w-5 h-5 mr-2" />
+                        <Save className="w-4 h-4 mr-2" />
                         Save Changes
                       </>
                     )}
@@ -739,7 +865,7 @@ const VillagesList = () => {
         onClose={closeDeleteDialog}
         onConfirm={() => handleDelete(deleteDialog.id)}
         title="Delete Village"
-        message={`Are you sure you want to delete "${deleteDialog.name}"? This action cannot be undone and will remove all associated data.`}
+        message={`Are you sure you want to delete the village "${deleteDialog.name}"? This action cannot be undone and will remove all associated data.`}
         confirmText="Delete"
         type="danger"
       />

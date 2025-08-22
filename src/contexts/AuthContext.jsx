@@ -37,9 +37,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const login = async (email, password) => {
+  const requestLoginOTP = async (email) => {
     try {
-      const response = await api.post('/auth/login', { email, password })
+      const response = await api.post('/auth/request-otp', { email })
+      return { success: true, message: response.data.message, email }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to send OTP'
+      }
+    }
+  }
+
+  const verifyLoginOTP = async (email, otp) => {
+    try {
+      const response = await api.post('/auth/verify-login-otp', { email, otp })
       const { token: newToken, user: userData } = response.data.data
       
       localStorage.setItem('token', newToken)
@@ -51,16 +63,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { 
         success: false, 
-        message: error.response?.data?.message || 'Login failed' 
+        message: error.response?.data?.message || 'Invalid OTP'
       }
     }
-  }
-
-  const logout = () => {
-    localStorage.removeItem('token')
-    setToken(null)
-    setUser(null)
-    delete api.defaults.headers.common['Authorization']
   }
 
   const forgotPassword = async (email) => {
@@ -92,8 +97,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/reset-password', { 
         email, 
         otp, 
-        newPassword,
-        confirmPassword: newPassword 
+        newPassword 
       })
       return { success: true, message: response.data.message }
     } catch (error) {
@@ -104,13 +108,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const logout = () => {
+    localStorage.removeItem('token')
+    setToken(null)
+    setUser(null)
+    delete api.defaults.headers.common['Authorization']
+  }
+
   const value = {
     user,
     loading,
-    login,
-    logout,
+    requestLoginOTP,
+    verifyLoginOTP,
     forgotPassword,
     verifyOTP,
+    logout,
     resetPassword,
     isAuthenticated: !!user,
     isRole: (role) => user?.role === role

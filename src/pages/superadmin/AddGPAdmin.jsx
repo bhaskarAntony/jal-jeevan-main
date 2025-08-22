@@ -23,6 +23,7 @@ const AddGPAdmin = () => {
     number: false,
     symbol: false
   })
+  const [errors, setErrors] = useState({})
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
 
@@ -38,6 +39,16 @@ const AddGPAdmin = () => {
     return Object.values(errors).every(Boolean)
   }
 
+  const validateForm = () => {
+    const newErrors = {}
+    if (!formData.name.trim()) newErrors.name = 'Name is required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Valid email is required'
+    if (!/^\+?\d{10,13}$/.test(formData.mobile)) newErrors.mobile = 'Mobile number must be 10-13 digits'
+    if (!validatePassword(formData.password)) newErrors.password = 'Password does not meet all requirements'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -47,12 +58,13 @@ const AddGPAdmin = () => {
     if (name === 'password') {
       validatePassword(value)
     }
+    setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!validatePassword(formData.password)) {
-      showError('Password does not meet all requirements')
+    if (!validateForm()) {
+      showError('Please correct the errors in the form')
       return
     }
     setLoading(true)
@@ -114,6 +126,7 @@ const AddGPAdmin = () => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                 placeholder="Enter admin name"
               />
+              {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
             </div>
 
             <div>
@@ -129,6 +142,7 @@ const AddGPAdmin = () => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                 placeholder="Enter mobile number"
               />
+              {errors.mobile && <p className="text-sm text-red-600 mt-1">{errors.mobile}</p>}
             </div>
 
             <div className="md:col-span-2">
@@ -144,6 +158,7 @@ const AddGPAdmin = () => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                 placeholder="Enter email address"
               />
+              {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
             </div>
 
             <div className="md:col-span-2">
@@ -183,9 +198,10 @@ const AddGPAdmin = () => {
                   {passwordErrors.number ? '✓' : '✗'} At least one number
                 </p>
                 <p className={passwordErrors.symbol ? 'text-green-600' : 'text-red-600'}>
-                  {passwordErrors.symbol ? '✓' : '✗'} <>At least one special symbol (!@#$%^&*(),.?":{}|</>)
+                  {passwordErrors.symbol ? '✓' : '✗'} At least one special symbol (!@#$%^&*(),.?":{}|)
                 </p>
               </div>
+              {errors.password && <p className="text-sm text-red-600 mt-1">{errors.password}</p>}
             </div>
           </div>
 
@@ -199,7 +215,7 @@ const AddGPAdmin = () => {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              // disabled={loading || Object.keys(errors).length > 0}
               className="flex items-center px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading ? (
