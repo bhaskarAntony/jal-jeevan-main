@@ -31,7 +31,7 @@ const GenerateBill = () => {
     fetchHouses()
   }, [])
   useEffect(()=>{
-    setBillData({...billData, totalUsage:billData.previousReading+billData.currentReading})
+    setBillData({...billData, totalUsage:Number(billData.previousReading)+ Number(billData.currentReading)})
   },[billData.currentReading, billData.previousReading])
 
   useEffect(() => {
