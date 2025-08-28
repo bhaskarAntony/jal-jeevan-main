@@ -18,7 +18,8 @@ const Calculations = () => {
       publicPrivateInstitutions: 0,
       commercialEnterprises: 0,
       industrialEnterprises: 0
-    }
+    },
+    fixedAmount:0
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -62,6 +63,11 @@ const Calculations = () => {
         [field]: parseFloat(value) || 0
       }
     }))
+  }
+
+  const handleOnChange = (e) =>{
+    const {name, value} = e.target;
+    setTariffData({...tariffData, [name]:Number(value)});
   }
 
   const handleNonDomesticChange = (field, value) => {
@@ -296,7 +302,39 @@ const Calculations = () => {
           </div>
         </motion.div>
       </div>
+ <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.3 }}
+        className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8"
+      >
+        <div className="flex items-center mb-6">
+          <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <Calculator className="w-6 h-6 text-emerald-600" />
+          </div>
+          <div className="ml-4">
+            <h2 className="text-xl font-semibold text-gray-900">Fixed Amount</h2>
+            <p className="text-gray-600 text-sm">Fixed amount will add to final bill amount.</p>
+          </div>
+        </div>
 
+ <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Fixed amount
+              </label>
+              <input
+                type="number"
+                name='fixedAmount'
+                value={tariffData.fixedAmount}
+                onChange={(e) => handleOnChange(e)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 text-sm"
+                placeholder="0.00"
+                
+                step="0.01"
+              />
+            </div>
+     
+      </motion.div>
       {/* Calculation Example */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -333,13 +371,18 @@ const Calculations = () => {
               <span>Next 3 KL @ ₹{tariffData.domestic.from15to20KL.toFixed(2)}/KL:</span>
               <span>₹{(3 * tariffData.domestic.from15to20KL).toFixed(2)}</span>
             </div>
+
+             <div className="flex justify-between">
+              <span>Fixed Amount ₹{tariffData.fixedAmount.toFixed(2)}/Total  Bill:</span>
+              <span>₹{(tariffData.fixedAmount).toFixed(2)}</span>
+            </div>
             <div className="border-t border-gray-200 pt-3 flex justify-between font-semibold text-gray-900">
               <span>Total Amount:</span>
               <span>₹{(
                 7 * tariffData.domestic.upTo7KL +
                 3 * tariffData.domestic.from7to10KL +
                 5 * tariffData.domestic.from10to15KL +
-                3 * tariffData.domestic.from15to20KL
+                3 * tariffData.domestic.from15to20KL + tariffData.fixedAmount
               ).toFixed(2)}</span>
             </div>
           </div>

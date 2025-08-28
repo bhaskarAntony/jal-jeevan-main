@@ -1,123 +1,152 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { gpAdminAPI } from '../../services/api'
-import { useToast } from '../../contexts/ToastContext'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import { Plus, Search, Home, Calendar, X } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { gpAdminAPI } from '../../services/api';
+import { useToast } from '../../contexts/ToastContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { Plus, Search, Home, Calendar, X } from 'lucide-react';
 
 const GenerateBill = () => {
   const location = useLocation();
-  console.log(location);
-  
-  const [houses, setHouses] = useState([])
-  const [filteredHouses, setFilteredHouses] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedHouse, setSelectedHouse] = useState(null)
+  const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
+
+  const [houses, setHouses] = useState([]);
+  const [filteredHouses, setFilteredHouses] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedHouse, setSelectedHouse] = useState(null);
   const [billData, setBillData] = useState({
     month: '',
     year: new Date().getFullYear(),
+    previousReading: 0,
     currentReading: '',
+    totalUsage: 0,
     dueDate: '',
-    previousReading:0,
-    totalUsage:0
-  })
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const { showSuccess, showError } = useToast()
-  const navigate = useNavigate()
+  });
+  const [averageReading, setAverageReading] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchHouses()
-  }, [])
-  useEffect(()=>{
-    setBillData({...billData, totalUsage:Number(billData.previousReading)+ Number(billData.currentReading)})
-  },[billData.currentReading, billData.previousReading])
+    fetchHouses();
+  }, []);
 
   useEffect(() => {
+    // Calculate total usage and average reading when previous or current reading changes
+    const prev = parseFloat(billData.previousReading) || 0;
+    const curr = parseFloat(billData.currentReading) || 0;
+    const total = curr - prev;
+    const avg = (prev + curr) / 2;
+
+    setBillData((prevData) => ({
+      ...prevData,
+      totalUsage: total >= 0 ? total : 0, // Ensure totalUsage is non-negative
+    }));
+    setAverageReading(avg >= 0 ? avg.toFixed(2) : 0);
+  }, [billData.previousReading, billData.currentReading]);
+
+  useEffect(() => {
+    // Filter houses based on search term
     setFilteredHouses(
-      houses.filter(house =>
-        house.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        house.waterMeterNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        house.village?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      houses.filter(
+        (house) =>
+          house.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          house.waterMeterNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          house.village?.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
-    )
-  }, [searchTerm, houses])
+    );
+  }, [searchTerm, houses]);
 
   const fetchHouses = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await gpAdminAPI.getHouses({ limit: 100 })
-      setHouses(response.data.data.houses)
-      setFilteredHouses(response.data.data.houses)
+      const response = await gpAdminAPI.getHouses({ limit: 100 });
+      setHouses(response.data.data.houses);
+      setFilteredHouses(response.data.data.houses);
     } catch (error) {
-      showError('Failed to fetch houses')
-      console.error('Fetch houses error:', error)
+      showError('Failed to fetch houses');
+      console.error('Fetch houses error:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const fetchHouseDetails = async (houseId) => {
+    try {
+      const response = await gpAdminAPI.getHouse(houseId);
+      const houseData = response.data.data.house;
+      setSelectedHouse(houseData);
+      // Set previous reading from API response
+      setBillData((prev) => ({
+        ...prev,
+        previousReading: houseData.previousMeterReading || 0,
+      }));
+    } catch (error) {
+      showError('Failed to fetch house details');
+      console.error('Fetch house details error:', error);
+    }
+  };
 
   const handleHouseSelect = (house) => {
-    setSelectedHouse(house)
-    setSearchTerm('')
-    setFilteredHouses(houses)
-  }
+    setSearchTerm('');
+    setFilteredHouses(houses);
+    fetchHouseDetails(house._id); // Fetch house details to get previous reading
+  };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setBillData(prev => ({
+    const { name, value } = e.target;
+    setBillData((prev) => ({
       ...prev,
-      [name]: name === 'month' ? value : value
-    }))
-  }
+      [name]: name === 'month' ? value : value,
+    }));
+  };
 
   const handleDueDateChange = (e) => {
-    setBillData(prev => ({ ...prev, dueDate: e.target.value }))
-  }
+    setBillData((prev) => ({ ...prev, dueDate: e.target.value }));
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!selectedHouse) {
-      showError('Please select a house')
-      return
+      showError('Please select a house');
+      return;
     }
     if (!billData.month || !billData.year || !billData.currentReading || !billData.dueDate) {
-      showError('All fields are required')
-      return
+      showError('All fields are required');
+      return;
     }
-    if (parseFloat(billData.currentReading) < 0) {
-      showError('Current reading cannot be negative')
-      return
+    if (parseFloat(billData.currentReading) < parseFloat(billData.previousReading)) {
+      showError('Current reading cannot be less than previous reading');
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
     try {
       const payload = {
         month: billData.month,
         year: parseInt(billData.year),
+        previousReading: parseFloat(billData.previousReading),
         currentReading: parseFloat(billData.currentReading),
-        previousReading:  parseFloat(billData.previousReading),
-        totalUsage:parseFloat(billData.totalUsage),
-        dueDate: new Date(billData.dueDate).toISOString()
-      }
-      await gpAdminAPI.generateBill(selectedHouse._id, payload)
-      showSuccess('Bill generated successfully')
-      navigate('/gp-admin/bills')
+        totalUsage: parseFloat(billData.totalUsage),
+        dueDate: new Date(billData.dueDate).toISOString(),
+      };
+      await gpAdminAPI.generateBill(selectedHouse._id, payload);
+      showSuccess('Bill generated successfully');
+      navigate('/gp-admin/bills');
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to generate bill')
-      console.error('Generate bill error:', error)
+      showError(error.response?.data?.message || 'Failed to generate bill');
+      console.error('Generate bill error:', error);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" />
       </div>
-    )
+    );
   }
 
   return (
@@ -131,7 +160,7 @@ const GenerateBill = () => {
           </p>
         </div>
         <Link
-          to={location.state.loc?location.state.loc:'/gp-admin/bills'}
+          to={location.state?.loc ? location.state.loc : '/gp-admin/bills'}
           className="flex items-center px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
         >
           <X className="w-5 h-5 mr-2" />
@@ -164,7 +193,7 @@ const GenerateBill = () => {
             </div>
             {searchTerm && filteredHouses.length > 0 && (
               <div className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredHouses.map(house => (
+                {filteredHouses.map((house) => (
                   <div
                     key={house._id}
                     onClick={() => handleHouseSelect(house)}
@@ -197,7 +226,11 @@ const GenerateBill = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedHouse(null)}
+                  onClick={() => {
+                    setSelectedHouse(null);
+                    setBillData((prev) => ({ ...prev, previousReading: 0, currentReading: '', totalUsage: 0 }));
+                    setAverageReading(0);
+                  }}
                   className="ml-auto text-gray-500 hover:text-gray-700"
                 >
                   <X className="w-5 h-5" />
@@ -220,8 +253,23 @@ const GenerateBill = () => {
                 required
               >
                 <option value="">Select Month</option>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(month => (
-                  <option key={month} value={month}>{month}</option>
+                {[
+                  'January',
+                  'February',
+                  'March',
+                  'April',
+                  'May',
+                  'June',
+                  'July',
+                  'August',
+                  'September',
+                  'October',
+                  'November',
+                  'December',
+                ].map((month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
                 ))}
               </select>
             </div>
@@ -249,12 +297,8 @@ const GenerateBill = () => {
                 type="number"
                 name="previousReading"
                 value={billData.previousReading}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
-                placeholder="0.00"
-                
-                step="0.01"
-                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                disabled
               />
             </div>
             <div>
@@ -268,25 +312,30 @@ const GenerateBill = () => {
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                 placeholder="0.00"
-                
                 step="0.01"
                 required
               />
             </div>
-             <div>
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Total Usage(KL) <span className="text-red-500">*</span>
+                Total Usage (KL) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 name="totalUsage"
                 value={billData.totalUsage}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
-                placeholder="0.00"
-                
-                step="0.01"
-                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-sm"
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Average Reading (KL)
+              </label>
+              <input
+                type="number"
+                value={averageReading}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-sm"
                 disabled
               />
             </div>
@@ -308,7 +357,7 @@ const GenerateBill = () => {
           {/* Submit Button */}
           <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
             <Link
-             to={location.state.loc?location.state.loc:'/gp-admin/bills'}
+              to={location.state?.loc ? location.state.loc : '/gp-admin/bills'}
               className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all"
             >
               Cancel
@@ -331,7 +380,7 @@ const GenerateBill = () => {
         </form>
       </motion.div>
     </div>
-  )
-}
+  );
+};
 
-export default GenerateBill
+export default GenerateBill;
