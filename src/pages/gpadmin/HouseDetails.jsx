@@ -15,7 +15,7 @@ import {
   Plus,
   Eye,
   Printer,
-  DollarSign,
+  IndianRupee,
   Calendar,
   QrCode,
   Copy,
@@ -328,7 +328,7 @@ const HouseDetails = () => {
         {totalUnpaid > 0 && (
           <div className="mt-8 p-6 bg-red-50 border border-red-200 rounded-xl">
             <div className="flex items-center">
-              <DollarSign className="w-6 h-6 text-red-600 mr-4" />
+              <IndianRupee className="w-6 h-6 text-red-600 mr-4" />
               <div>
                 <h4 className="text-lg font-semibold text-red-900">Outstanding Amount</h4>
                 <p className="text-red-700 mt-1 text-sm">
@@ -487,7 +487,7 @@ const HouseDetails = () => {
                             className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-all"
                             title="Pay Bill"
                           >
-                            <DollarSign className="w-5 h-5" />
+                            <IndianRupee className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -570,7 +570,7 @@ const HouseDetails = () => {
                       </div>
                     </div>
                     <div className="flex items-start space-x-4">
-                      <DollarSign className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
+                      <IndianRupee className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-semibold text-gray-700">Amount</p>
                         <p className="text-sm text-gray-900">

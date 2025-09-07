@@ -24,6 +24,7 @@ import {
   Check,
   User
 } from 'lucide-react';
+import BackButton from '../../components/BackButton';
 
 const UsersList = () => {
   const [users, setUsers] = useState([]);
@@ -282,12 +283,16 @@ const UsersList = () => {
     <div className="space-y-6 max-w-7xl mx-auto py-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
+         <div className="flex items-center space-x-4">
+                  <BackButton link="/"/>    
+       <div>
           <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
           <p className="text-gray-600 mt-1 text-sm">
             Manage all users in your Gram Panchayat
           </p>
         </div>
+                </div>
+       
         <div className="flex items-center space-x-3">
           <Link
             to="/gp-admin/users/add"

@@ -6,8 +6,10 @@ import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import {
-  Plus, Search, Eye, FileText, Filter, Download, Printer, DollarSign, Calendar, User, X, QrCode, Pencil, Trash2
+  Plus, Search, Eye, FileText, Filter, Download, Printer, Calendar, User, X, QrCode, Pencil, Trash2,
+  IndianRupee
 } from 'lucide-react';
+import BackButton from '../../components/BackButton';
 
 const BillsList = () => {
   const location = useLocation();
@@ -254,23 +256,62 @@ const BillsList = () => {
     }
   };
 
-  const handleDownloadPDF = async (billId) => {
-    try {
-      const response = await gpAdminAPI.downloadBillPDF(billId);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `bill_${bills.find(b => b._id === billId).billNumber}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      showSuccess('Bill PDF downloaded successfully');
-    } catch (error) {
-      showError('Failed to download bill PDF');
-      console.error('Download PDF error:', error);
+  // const handleDownloadPDF = async (billId) => {
+  //   try {
+  //     const response = await gpAdminAPI.downloadBillPDF(billId);
+  //     console.log(response);
+      
+  //     const url = window.URL.createObjectURL(new Blob([response.data]));
+  //     const link = document.createElement('a');
+  //     link.href = url;
+  //     link.setAttribute('download', `bill_${bills.find(b => b._id === billId).billNumber}.pdf`);
+  //     document.body.appendChild(link);
+  //     link.click();
+  //     document.body.removeChild(link);
+  //     window.URL.revokeObjectURL(url);
+  //     showSuccess('Bill PDF downloaded successfully');
+  //   } catch (error) {
+  //     showError('Failed to download bill PDF');
+  //     console.error('Download PDF error:', error);
+  //   }
+  // };
+
+   const handleDownloadPDF = async (billId) => {
+  try {
+    // Configure axios to handle binary data
+    const response = await gpAdminAPI.downloadBillPDF(billId, {
+      responseType: 'blob', // Important for binary data
+    });
+    console.log(response);
+    
+
+    // Check if response is a valid PDF
+    const contentType = response.headers['content-type'];
+    if (contentType !== 'application/pdf') {
+      throw new Error('Received non-PDF response');
     }
-  };
+
+    const bill = bills.find(b => b._id === billId);
+    if (!bill) {
+      throw new Error('Bill not found in local data');
+    }
+
+
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `bill_${bill.billNumber}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    showSuccess('Bill PDF downloaded successfully');
+  } catch (error) {
+    showError('Failed to download bill PDF: ' + (error.message || 'Unknown error'));
+    console.error('Download PDF error:', error);
+  }
+};
 
   const handleExportBills = async () => {
     try {
@@ -353,12 +394,16 @@ const BillsList = () => {
     <div className="space-y-8 max-w-7xl mx-auto py-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+         <div className="flex items-center space-x-4">
+                  <BackButton link="/"/>    
         <div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Bills Management</h1>
           <p className="text-gray-600 mt-2 text-sm sm:text-base">
             Manage all water bills and payments
           </p>
         </div>
+                </div>
+        
         <div className="flex items-center space-x-4">
           <button
             onClick={handleExportBills}
@@ -527,7 +572,12 @@ const BillsList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {new Date(bill.dueDate).toLocaleDateString('en-IN')}
+                        {
+                          console.log(typeof bill.dueDate)
+                          
+                        }
+                     {new Date(bill.dueDate).toLocaleDateString('en-IN') != 'Invalid Date'? new Date(bill.dueDate).toLocaleDateString('en-IN') : bill.dueDate}
+                       
                       </div>
                       {bill.paidDate && (
                         <div className="text-sm text-green-600">
@@ -577,7 +627,7 @@ const BillsList = () => {
                               className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-all"
                               title="Pay Bill"
                             >
-                              <DollarSign className="w-5 h-5" />
+                              <IndianRupee className="w-5 h-5" />
                             </button>
                           </>
                         )}
@@ -693,7 +743,7 @@ const BillsList = () => {
                   onClick={() => { setSelectedBill(bill._id); setIsBillModalOpen(true); }}
                   className="flex items-center px-3 py-1 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
                 >
-                  <DollarSign className="w-4 h-4 mr-1" />
+                  <IndianRupee className="w-4 h-4 mr-1" />
                   Pay
                 </button>
               )}
@@ -803,7 +853,7 @@ const BillsList = () => {
                       </div>
                     </div>
                     <div className="flex items-start space-x-4">
-                      <DollarSign className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
+                      <IndianRupee className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-semibold text-gray-700">Amount</p>
                         <p className="text-sm text-gray-900">

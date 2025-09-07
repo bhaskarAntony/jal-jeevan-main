@@ -47,7 +47,7 @@ const GPAdminLayout = () => {
       subItems: [
         { name: 'Calculations', href: '/gp-admin/calculations', icon: Calculator },
         { name: 'Users List', href: '/gp-admin/users', icon: Users },
-        { name: 'QR Code', href: '/gp-admin/qr-code', icon: QrCode }
+        // { name: 'QR Code', href: '/gp-admin/qr-code', icon: QrCode }
       ]
     },
     { name: 'GP Profile', href: '/gp-admin/settings', icon: Settings }

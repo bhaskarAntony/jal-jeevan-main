@@ -21,6 +21,7 @@ import {
   FileText,
   Calendar
 } from 'lucide-react';
+import BackButton from '../../components/BackButton';
 
 const VillagesList = () => {
   const [villages, setVillages] = useState([]);
@@ -275,12 +276,16 @@ const VillagesList = () => {
     <div className="space-y-6 max-w-7xl mx-auto py-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+         <div className="flex items-center space-x-4">
+                  <BackButton link="/"/>    
         <div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Villages Management</h1>
           <p className="text-gray-600 mt-2 text-sm sm:text-base">
             Manage all villages in your Gram Panchayat
           </p>
         </div>
+        </div>
+       
         <div className="flex items-center space-x-4">
           <button
             onClick={handleExportVillages}

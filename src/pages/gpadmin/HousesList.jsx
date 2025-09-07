@@ -23,6 +23,7 @@ import {
   File,
   Filter
 } from 'lucide-react';
+import BackButton from '../../components/BackButton';
 
 const HousesList = () => {
   const [houses, setHouses] = useState([]);
@@ -385,11 +386,14 @@ const HousesList = () => {
     <div className="space-y-6 max-w-7xl mx-auto py-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <BackButton link="/"/>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Houses Management</h1>
           <p className="text-gray-600 mt-1 text-sm sm:text-base">
             Manage all houses and their water connections
           </p>
+        </div>
         </div>
         <div className="flex items-center space-x-3">
           <button

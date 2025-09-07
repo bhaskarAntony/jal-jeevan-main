@@ -40,16 +40,34 @@ const AddUser = () => {
     return { rules, isValid: Object.values(rules).every(rule => rule) }
   }
 
+  // Validate phone number in real-time
+  useEffect(() => {
+    const cleanedMobile = formData.mobile.replace(/[\s-]/g, '');
+    if (formData.mobile && !/^\+91\d{10}$/.test(cleanedMobile)) {
+      setErrors((prev) => ({
+        ...prev,
+        mobile: 'Mobile number must be 10 digits with +91 (e.g., +919876543210)'
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, mobile: '' }));
+    }
+  }, [formData.mobile]);
+
   // Validate form fields
   const validateForm = () => {
-    const newErrors = {}
-    if (!formData.name.trim()) newErrors.name = 'Full name is required'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Valid email is required'
-    if (!/^\+?\d{10,13}$/.test(formData.mobile)) newErrors.mobile = 'Mobile number must be 10-13 digits'
-    if (!formData.role) newErrors.role = 'User role is required'
-    if (!isPasswordValid) newErrors.password = 'Password does not meet all requirements'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Full name is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Valid email is required';
+    
+    const cleanedMobile = formData.mobile.replace(/[\s-]/g, '');
+    if (!/^\+91\d{10}$/.test(cleanedMobile)) {
+      newErrors.mobile = 'Mobile number must be 10 digits with +91 (e.g., +919876543210)';
+    }
+    
+    if (!formData.role) newErrors.role = 'User role is required';
+    if (!isPasswordValid) newErrors.password = 'Password does not meet all requirements';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   }
 
   // Update password rules and validity when password changes
@@ -65,6 +83,7 @@ const AddUser = () => {
       ...prev,
       [name]: value
     }))
+    // Only clear error for the changed field
     setErrors(prev => ({ ...prev, [name]: '' }))
   }
 

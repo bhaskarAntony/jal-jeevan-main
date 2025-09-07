@@ -31,7 +31,9 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const response = await gpAdminAPI.getDashboard()
-      setDashboardData(response.data.data)
+      setDashboardData(response.data.data);
+      console.log(response);
+      
     } catch (error) {
       showError('Failed to fetch dashboard data')
       console.error('Dashboard error:', error)

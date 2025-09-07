@@ -111,7 +111,7 @@ const GenerateBill = () => {
       showError('Please select a house');
       return;
     }
-    if (!billData.month || !billData.year || !billData.currentReading || !billData.dueDate) {
+    if (!billData.month || !billData.year || !billData.currentReading) {
       showError('All fields are required');
       return;
     }
@@ -128,8 +128,10 @@ const GenerateBill = () => {
         previousReading: parseFloat(billData.previousReading),
         currentReading: parseFloat(billData.currentReading),
         totalUsage: parseFloat(billData.totalUsage),
-        dueDate: new Date(billData.dueDate).toISOString(),
+        // dueDate: new Date(billData.dueDate).toISOString(),
       };
+      console.log(payload);
+      
       await gpAdminAPI.generateBill(selectedHouse._id, payload);
       showSuccess('Bill generated successfully');
       navigate('/gp-admin/bills');
@@ -339,19 +341,19 @@ const GenerateBill = () => {
                 disabled
               />
             </div>
-            <div>
+           {/*   <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Due Date <span className="text-red-500">*</span>
               </label>
-              <input
+            <input
                 type="date"
                 name="dueDate"
                 value={billData.dueDate}
                 onChange={handleDueDateChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                 required
-              />
-            </div>
+              /> 
+            </div>*/}
           </div>
 
           {/* Submit Button */}
