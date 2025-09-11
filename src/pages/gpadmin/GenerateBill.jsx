@@ -330,7 +330,7 @@ const GenerateBill = () => {
                 disabled
               />
             </div>
-            <div>
+            {/* <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Average Reading (KL)
               </label>
@@ -340,7 +340,7 @@ const GenerateBill = () => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-sm"
                 disabled
               />
-            </div>
+            </div> */}
            {/*   <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Due Date <span className="text-red-500">*</span>
