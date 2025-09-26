@@ -365,4 +365,3 @@ For support and questions about this release:
 
 **Built with ❤️ for digital governance in Indian Gram Panchayats**
 
-#Contact Us to get the whole system.
